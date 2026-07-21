@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/eQuantic.Payment.Pagarme/eQuantic.Payment.Pagarme.csproj" />
+    <Project Path="src/eQuantic.Payment.Stripe/eQuantic.Payment.Stripe.csproj" />
+    <Project Path="src/eQuantic.Payment/eQuantic.Payment.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/eQuantic.Payment.Tests/eQuantic.Payment.Tests.csproj" />
+  </Folder>
+</Solution>
