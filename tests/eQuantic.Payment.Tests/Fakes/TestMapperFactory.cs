@@ -1,4 +1,5 @@
 using eQuantic.Mapper;
+using eQuantic.Payment.MercadoPago.Payments;
 using eQuantic.Payment.Pagarme.V5;
 using eQuantic.Payment.Stripe.V1;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +14,8 @@ public static class TestMapperFactory
         var services = new ServiceCollection();
         services.AddMappers(o => o
             .FromAssembly(typeof(PagarmeProviderV5).Assembly)
-            .FromAssembly(typeof(StripeProviderV1).Assembly));
+            .FromAssembly(typeof(StripeProviderV1).Assembly)
+            .FromAssembly(typeof(MercadoPagoPaymentsProvider).Assembly));
         return services.BuildServiceProvider().GetRequiredService<IMapperFactory>();
     }
 }

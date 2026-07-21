@@ -9,12 +9,12 @@ Each gateway has its own client package (`eQuantic.Payment.Pagarme`, `eQuantic.P
 │  Your application  →  IPaymentProviderFactory / IPaymentProvider │  ← single contract
 └─────────────────────────────────────────────────────────────┘
               │ eQuantic.Payment (core: models + DI + factory)
-   ┌──────────┼───────────────────────────┐
-   ▼          ▼                            ▼
-Pagar.me    Stripe                      (next)
- ├ V4  ──┐    └ V1 (dated Stripe-Version:  MercadoPago, Cielo, …
- └ V5  ──┤       2024-06-20 /
-         │       2025-04-30.basil)
+   ┌──────────┼──────────────────┬──────────────────────┐
+   ▼          ▼                  ▼                       ▼
+Pagar.me    Stripe          Mercado Pago              (next)
+ ├ V4  ─┐    └ V1 (dated      ├ Payments (/v1/payments)  Cielo, …
+ └ V5  ─┤       Stripe-       └ Orders   (/v1/orders)
+        │       Version)
    adapters → unified PaymentResponse<T>
 ```
 
@@ -40,11 +40,19 @@ src/
 │   │   └── Mapping/                  #   eQuantic.Mapper IMapper<,> implementations
 │   └── PagarmeServiceCollectionExtensions.cs   # AddPagarme(...)
 │
-└── eQuantic.Payment.Stripe/          # Stripe client
-    ├── V1/                           # REST v1 (PaymentIntents) — cards, PIX, boleto
-    │   ├── Models/                   #   faithful wire DTOs (+ expandable converter)
-    │   └── Mapping/                  #   eQuantic.Mapper IMapper<,> implementations
-    └── StripeServiceCollectionExtensions.cs    # AddStripe(...)
+├── eQuantic.Payment.Stripe/          # Stripe client
+│   ├── V1/                           # REST v1 (PaymentIntents) — cards, PIX, boleto
+│   │   ├── Models/                   #   faithful wire DTOs (+ expandable converter)
+│   │   └── Mapping/                  #   eQuantic.Mapper IMapper<,> implementations
+│   └── StripeServiceCollectionExtensions.cs    # AddStripe(...)
+│
+└── eQuantic.Payment.MercadoPago/     # Mercado Pago client
+    ├── Payments/                     # Payments API (/v1/payments) — flat, numeric ids, decimal amounts
+    │   ├── Models/ + Mapping/
+    ├── Orders/                       # Orders API (/v1/orders) — nested, string ids, string amounts
+    │   ├── Models/ + Mapping/
+    ├── Customers/                    # shared /v1/customers (both API versions)
+    └── MercadoPagoServiceCollectionExtensions.cs   # AddMercadoPago(...)
 ```
 
 Each provider version has its own **typed client** (speaking that version's native wire format) and **adapters** that translate to the unified model. Switching version does not change a single line of the code that consumes `IPaymentProvider`.
@@ -55,8 +63,11 @@ Each provider version has its own **typed client** (speaking that version's nati
 |----------|--------------|---------------------|
 | **Pagar.me** | `V4` / `V5` (enum) | Different URLs and resources: v4 is *transaction-based* (`/transactions`, auth via `api_key` in the body); v5 is *order/charge-based* (`/orders` + `/charges`, Basic auth with a secret key). |
 | **Stripe** | dated `Stripe-Version` (`2024-06-20`, `2025-04-30.basil`) | Same REST `v1`, but the version pinned in the header changes the response shape. Sent as form-urlencoded, Bearer auth. |
+| **Mercado Pago** | `Payments` / `Orders` (enum) | Two parallel APIs: `Payments` (`/v1/payments`) is flat with numeric ids and **decimal** amounts; `Orders` (`/v1/orders`) is the newer unified model with string ids, **string** amounts and a different status vocabulary. Bearer auth + `X-Idempotency-Key`. |
 
-The version identifier always appears in the output (`response.Provider.Version`) and in the registration key (`pagarme@v5`, `stripe@2025-04-30.basil`).
+The version identifier always appears in the output (`response.Provider.Version`) and in the registration key (`pagarme@v5`, `stripe@2025-04-30.basil`, `mercadopago@payments`).
+
+> **Amounts:** the unified `Money` is centavos-based, but each adapter converts to the gateway's format — Pagar.me/Stripe use centavos, **Mercado Pago uses decimal reais** (Payments API) or **decimal strings** (Orders API). **Cards on Mercado Pago** require `Card.Brand` (used as the MP `payment_method_id`, e.g. `visa`/`debvisa`); Pagar.me and Stripe infer the brand from the token/PAN.
 
 ## Faithful wire models (Anti-Corruption Layer)
 
@@ -97,6 +108,11 @@ services.AddPayments(payments => payments
     {
         o.ApiKey  = builder.Configuration["Stripe:ApiKey"]!;
         o.Version = StripeApiVersion.V2025_04_30_Basil;
+    })
+    .AddMercadoPago(o =>
+    {
+        o.AccessToken = builder.Configuration["MercadoPago:AccessToken"]!;
+        o.Version     = MercadoPagoApiVersion.Payments;   // or Orders
     }));
 ```
 

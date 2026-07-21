@@ -41,6 +41,12 @@ public sealed class CardDetails
     public int ExpirationYear { get; init; }
     public string? Cvv { get; init; }
 
+    /// <summary>
+    /// Card brand/network (e.g. <c>visa</c>, <c>master</c>). Optional for providers that infer it from the
+    /// token or PAN (Pagar.me, Stripe); required by Mercado Pago, which uses it as the <c>payment_method_id</c>.
+    /// </summary>
+    public string? Brand { get; init; }
+
     /// <summary>Number of installments (parcelas). Defaults to 1.</summary>
     public int Installments { get; init; } = 1;
 }

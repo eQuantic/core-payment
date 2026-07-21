@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Mercado Pago API client for eQuantic.Payment. Versioned clients (Payments API and Orders API) plus the unified IPaymentProvider adapter.</Description>
+    <PackageTags>payment;mercadopago;pix;boleto;credit-card;brazil</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="eQuantic.Mapper" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\eQuantic.Payment\eQuantic.Payment.csproj" />
+  </ItemGroup>
+
+</Project>

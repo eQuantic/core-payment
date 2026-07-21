@@ -1,4 +1,7 @@
 using eQuantic.Mapper;
+using eQuantic.Payment.MercadoPago.Customers.Models;
+using eQuantic.Payment.MercadoPago.Orders.Models;
+using eQuantic.Payment.MercadoPago.Payments.Models;
 using eQuantic.Payment.Models.Requests;
 using eQuantic.Payment.Models.Results;
 using eQuantic.Payment.Pagarme.V4.Models;
@@ -44,5 +47,21 @@ public class MapperRegistrationTests
         Assert.True(_mappers.TryGetMapper<CreateChargeRequest, StripeForm, StripeRequestContext>(new StripeRequestContext(), out _));
         Assert.True(_mappers.TryGetMapper<RefundRequest, StripeForm>(out _));
         Assert.True(_mappers.TryGetMapper<CustomerRequest, StripeForm>(out _));
+    }
+
+    [Fact]
+    public void MercadoPago_mappers_are_registered()
+    {
+        // Payments API
+        Assert.True(_mappers.TryGetMapper<CreateChargeRequest, MercadoPagoPaymentRequest>(out _));
+        Assert.True(_mappers.TryGetMapper<MercadoPagoPaymentResponse, Charge>(out _));
+        Assert.True(_mappers.TryGetMapper<MercadoPagoRefundResponse, Refund>(out _));
+        // Orders API
+        Assert.True(_mappers.TryGetMapper<CreateChargeRequest, MercadoPagoOrderRequest>(out _));
+        Assert.True(_mappers.TryGetMapper<MercadoPagoOrderResponse, Charge>(out _));
+        Assert.True(_mappers.TryGetMapper<MercadoPagoOrderResponse, Refund>(out _));
+        // Shared customers
+        Assert.True(_mappers.TryGetMapper<CustomerRequest, MercadoPagoCustomerRequest>(out _));
+        Assert.True(_mappers.TryGetMapper<MercadoPagoCustomerResponse, Customer>(out _));
     }
 }

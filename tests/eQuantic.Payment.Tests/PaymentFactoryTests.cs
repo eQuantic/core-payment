@@ -1,6 +1,7 @@
 using eQuantic.Payment.Abstractions;
 using eQuantic.Payment.DependencyInjection;
 using eQuantic.Payment.Exceptions;
+using eQuantic.Payment.MercadoPago;
 using eQuantic.Payment.Pagarme;
 using eQuantic.Payment.Stripe;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,6 +70,18 @@ public class PaymentFactoryTests
     public void Get_unregistered_provider_throws()
     {
         var factory = BuildFactory(p => p.AddStripe(o => { o.ApiKey = "sk_test"; }));
-        Assert.Throws<ProviderNotRegisteredException>(() => factory.Get("mercadopago"));
+        Assert.Throws<ProviderNotRegisteredException>(() => factory.Get("cielo"));
+    }
+
+    [Fact]
+    public void Mercadopago_both_api_versions_coexist_and_resolve_by_version()
+    {
+        var factory = BuildFactory(p => p
+            .AddMercadoPago(o => { o.AccessToken = "TEST-1"; o.Version = MercadoPagoApiVersion.Payments; })
+            .AddMercadoPago(o => { o.AccessToken = "TEST-2"; o.Version = MercadoPagoApiVersion.Orders; }));
+
+        Assert.Equal("mercadopago@payments", factory.Get("mercadopago", "payments").Info.Key);
+        Assert.Equal("mercadopago@orders", factory.Get("mercadopago", "orders").Info.Key);
+        Assert.Equal("orders", factory.Get("mercadopago").Info.Version); // latest registered
     }
 }
