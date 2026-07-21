@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Efí (Gerencianet) API client for eQuantic.Payment. Versioned by product: Pix API (mTLS) and Cobranças API (boleto + card), plus the unified IPaymentProvider adapter.</Description>
+    <PackageTags>payment;efi;gerencianet;pix;boleto;credit-card;brazil</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="eQuantic.Mapper" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\eQuantic.Payment\eQuantic.Payment.csproj" />
+  </ItemGroup>
+
+</Project>

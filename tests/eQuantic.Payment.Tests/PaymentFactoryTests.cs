@@ -1,7 +1,12 @@
 using eQuantic.Payment.Abstractions;
+using eQuantic.Payment.Adyen;
+using eQuantic.Payment.Asaas;
+using eQuantic.Payment.Cielo;
 using eQuantic.Payment.DependencyInjection;
+using eQuantic.Payment.Efi;
 using eQuantic.Payment.Exceptions;
 using eQuantic.Payment.MercadoPago;
+using eQuantic.Payment.PagSeguro;
 using eQuantic.Payment.Pagarme;
 using eQuantic.Payment.Stripe;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,6 +76,35 @@ public class PaymentFactoryTests
     {
         var factory = BuildFactory(p => p.AddStripe(o => { o.ApiKey = "sk_test"; }));
         Assert.Throws<ProviderNotRegisteredException>(() => factory.Get("cielo"));
+    }
+
+    [Fact]
+    public void All_brazilian_providers_register_and_coexist_through_the_di_extensions()
+    {
+        var factory = BuildFactory(p => p
+            .AddPagarme(o => { o.ApiKey = "sk_test"; o.Version = PagarmeApiVersion.V5; })
+            .AddStripe(o => { o.ApiKey = "sk_test"; })
+            .AddMercadoPago(o => { o.AccessToken = "TEST-1"; })
+            .AddPagSeguro(o => { o.Token = "tok"; })
+            .AddCielo(o => { o.MerchantId = "mid"; o.MerchantKey = "mkey"; })
+            .AddAdyen(o => { o.ApiKey = "key"; o.MerchantAccount = "acct"; })
+            .AddAsaas(o => { o.ApiKey = "$aact_hmlg_x"; })
+            .AddEfi(o => { o.ClientId = "id"; o.ClientSecret = "sec"; o.Version = EfiApiVersion.Cobrancas; }));
+
+        var keys = factory.GetRegistered().Select(pi => pi.Key).ToArray();
+        Assert.Contains("pagarme@v5", keys);
+        Assert.Contains("stripe@2025-04-30.basil", keys);
+        Assert.Contains("mercadopago@payments", keys);
+        Assert.Contains("pagseguro@orders", keys);
+        Assert.Contains("cielo@3.0", keys);
+        Assert.Contains("adyen@v71", keys);
+        Assert.Contains("asaas@v3", keys);
+        Assert.Contains("efi@cobrancas", keys);
+
+        // Each resolves to a working provider instance.
+        Assert.Equal("cielo@3.0", factory.Get("cielo").Info.Key);
+        Assert.Equal("adyen@v71", factory.Get("adyen").Info.Key);
+        Assert.Equal("asaas@v3", factory.Get("asaas").Info.Key);
     }
 
     [Fact]

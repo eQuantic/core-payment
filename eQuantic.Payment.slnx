@@ -1,7 +1,12 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/eQuantic.Payment.Adyen/eQuantic.Payment.Adyen.csproj" />
+    <Project Path="src/eQuantic.Payment.Asaas/eQuantic.Payment.Asaas.csproj" />
+    <Project Path="src/eQuantic.Payment.Cielo/eQuantic.Payment.Cielo.csproj" />
+    <Project Path="src/eQuantic.Payment.Efi/eQuantic.Payment.Efi.csproj" />
     <Project Path="src/eQuantic.Payment.MercadoPago/eQuantic.Payment.MercadoPago.csproj" />
     <Project Path="src/eQuantic.Payment.Pagarme/eQuantic.Payment.Pagarme.csproj" />
+    <Project Path="src/eQuantic.Payment.PagSeguro/eQuantic.Payment.PagSeguro.csproj" />
     <Project Path="src/eQuantic.Payment.Stripe/eQuantic.Payment.Stripe.csproj" />
     <Project Path="src/eQuantic.Payment/eQuantic.Payment.csproj" />
   </Folder>

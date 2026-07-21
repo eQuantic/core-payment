@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Adyen Checkout API client for eQuantic.Payment. Versioned client (Checkout v71) plus the unified IPaymentProvider adapter.</Description>
+    <PackageTags>payment;adyen;pix;boleto;credit-card;brazil</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="eQuantic.Mapper" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\eQuantic.Payment\eQuantic.Payment.csproj" />
+  </ItemGroup>
+
+</Project>

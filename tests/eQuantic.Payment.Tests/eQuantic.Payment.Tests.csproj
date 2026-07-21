@@ -16,6 +16,11 @@
     <ProjectReference Include="..\..\src\eQuantic.Payment.Pagarme\eQuantic.Payment.Pagarme.csproj" />
     <ProjectReference Include="..\..\src\eQuantic.Payment.Stripe\eQuantic.Payment.Stripe.csproj" />
     <ProjectReference Include="..\..\src\eQuantic.Payment.MercadoPago\eQuantic.Payment.MercadoPago.csproj" />
+    <ProjectReference Include="..\..\src\eQuantic.Payment.PagSeguro\eQuantic.Payment.PagSeguro.csproj" />
+    <ProjectReference Include="..\..\src\eQuantic.Payment.Efi\eQuantic.Payment.Efi.csproj" />
+    <ProjectReference Include="..\..\src\eQuantic.Payment.Cielo\eQuantic.Payment.Cielo.csproj" />
+    <ProjectReference Include="..\..\src\eQuantic.Payment.Adyen\eQuantic.Payment.Adyen.csproj" />
+    <ProjectReference Include="..\..\src\eQuantic.Payment.Asaas\eQuantic.Payment.Asaas.csproj" />
   </ItemGroup>
 
 </Project>

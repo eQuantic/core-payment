@@ -9,13 +9,12 @@ Each gateway has its own client package (`eQuantic.Payment.Pagarme`, `eQuantic.P
 │  Your application  →  IPaymentProviderFactory / IPaymentProvider │  ← single contract
 └─────────────────────────────────────────────────────────────┘
               │ eQuantic.Payment (core: models + DI + factory)
-   ┌──────────┼──────────────────┬──────────────────────┐
-   ▼          ▼                  ▼                       ▼
-Pagar.me    Stripe          Mercado Pago              (next)
- ├ V4  ─┐    └ V1 (dated      ├ Payments (/v1/payments)  Cielo, …
- └ V5  ─┤       Stripe-       └ Orders   (/v1/orders)
-        │       Version)
-   adapters → unified PaymentResponse<T>
+   ┌──────────┴──────────────────────────────────────────────┐
+   ▼                                                           ▼
+ 8 provider packages, each structured by version:      adapters → unified
+   Pagar.me (v4/v5)   ·  Stripe (dated Stripe-Version)         PaymentResponse<T>
+   Mercado Pago (payments/orders)  ·  PagSeguro (orders)
+   Cielo (3.0)  ·  Adyen (v71)  ·  Efí (pix/cobrancas)  ·  Asaas (v3)
 ```
 
 ## Solution layout
@@ -46,14 +45,22 @@ src/
 │   │   └── Mapping/                  #   eQuantic.Mapper IMapper<,> implementations
 │   └── StripeServiceCollectionExtensions.cs    # AddStripe(...)
 │
-└── eQuantic.Payment.MercadoPago/     # Mercado Pago client
-    ├── Payments/                     # Payments API (/v1/payments) — flat, numeric ids, decimal amounts
-    │   ├── Models/ + Mapping/
-    ├── Orders/                       # Orders API (/v1/orders) — nested, string ids, string amounts
-    │   ├── Models/ + Mapping/
-    ├── Customers/                    # shared /v1/customers (both API versions)
-    └── MercadoPagoServiceCollectionExtensions.cs   # AddMercadoPago(...)
+├── eQuantic.Payment.MercadoPago/     # Mercado Pago client
+│   ├── Payments/                     # Payments API (/v1/payments) — flat, numeric ids, decimal amounts
+│   │   ├── Models/ + Mapping/
+│   ├── Orders/                       # Orders API (/v1/orders) — nested, string ids, string amounts
+│   │   ├── Models/ + Mapping/
+│   ├── Customers/                    # shared /v1/customers (both API versions)
+│   └── MercadoPagoServiceCollectionExtensions.cs   # AddMercadoPago(...)
+│
+├── eQuantic.Payment.PagSeguro/       # PagSeguro/PagBank — Orders/Charges API (Orders/ folder)
+├── eQuantic.Payment.Cielo/           # Cielo — E-commerce API 3.0 (V3/ folder, PascalCase JSON, 2 hosts)
+├── eQuantic.Payment.Adyen/           # Adyen — Checkout API (V71/ folder, async modifications)
+├── eQuantic.Payment.Asaas/           # Asaas — API v3 (V3/ folder, decimal money, real customers)
+└── eQuantic.Payment.Efi/             # Efí/Gerencianet — Pix API (mTLS) + Cobranças API (Pix/ + Cobrancas/)
 ```
+
+Every provider package follows the same internal layout as MercadoPago (`Models/` faithful DTOs, `Mapping/` eQuantic.Mapper `IMapper<,>` classes, client, operations, provider adapter, `Add<Name>` DI extension).
 
 Each provider version has its own **typed client** (speaking that version's native wire format) and **adapters** that translate to the unified model. Switching version does not change a single line of the code that consumes `IPaymentProvider`.
 
@@ -64,6 +71,11 @@ Each provider version has its own **typed client** (speaking that version's nati
 | **Pagar.me** | `V4` / `V5` (enum) | Different URLs and resources: v4 is *transaction-based* (`/transactions`, auth via `api_key` in the body); v5 is *order/charge-based* (`/orders` + `/charges`, Basic auth with a secret key). |
 | **Stripe** | dated `Stripe-Version` (`2024-06-20`, `2025-04-30.basil`) | Same REST `v1`, but the version pinned in the header changes the response shape. Sent as form-urlencoded, Bearer auth. |
 | **Mercado Pago** | `Payments` / `Orders` (enum) | Two parallel APIs: `Payments` (`/v1/payments`) is flat with numeric ids and **decimal** amounts; `Orders` (`/v1/orders`) is the newer unified model with string ids, **string** amounts and a different status vocabulary. Bearer auth + `X-Idempotency-Key`. |
+| **PagSeguro / PagBank** | `Orders` (enum) | Modern Orders/Charges API (`/orders` + `/charges`), centavos, Bearer auth. Card/boleto go in `charges[]`, PIX in `qr_codes[]`; refund = cancel with amount. (Legacy XML API is a separate axis, not modeled.) |
+| **Cielo** | `3.0` (enum `V3`) | E-commerce API 3.0, **PascalCase** JSON, centavos, dual-header auth (`MerchantId`/`MerchantKey`), **two hosts** (transactional for POST/PUT, query for GET). Numeric status codes. |
+| **Adyen** | dated path `v71` (enum) | Checkout API `/v71/payments`; minor-unit amounts; `X-API-Key` + `merchantAccount`. Async modifications (capture/cancel/refund return `received`, final state via webhook); a refusal is HTTP 200 with `resultCode: Refused`. |
+| **Efí / Gerencianet** | `Pix` / `Cobrancas` (enum) | Two disjoint APIs as versions: `pix` (Central Bank Pix, decimal-string money, **OAuth2 + mTLS certificate**) handles PIX; `cobrancas` (centavos, OAuth2) handles boleto + card. |
+| **Asaas** | `v3` (enum) | API v3, **decimal** money, `access_token` header. Standalone customers (`/customers`); a charge first creates the customer, then the payment; PIX QR and boleto line are fetched via follow-up GETs. |
 
 The version identifier always appears in the output (`response.Provider.Version`) and in the registration key (`pagarme@v5`, `stripe@2025-04-30.basil`, `mercadopago@payments`).
 
@@ -113,8 +125,30 @@ services.AddPayments(payments => payments
     {
         o.AccessToken = builder.Configuration["MercadoPago:AccessToken"]!;
         o.Version     = MercadoPagoApiVersion.Payments;   // or Orders
+    })
+    .AddPagSeguro(o => { o.Token = builder.Configuration["PagSeguro:Token"]!; })
+    .AddCielo(o =>
+    {
+        o.MerchantId  = builder.Configuration["Cielo:MerchantId"]!;
+        o.MerchantKey = builder.Configuration["Cielo:MerchantKey"]!;
+    })
+    .AddAdyen(o =>
+    {
+        o.ApiKey          = builder.Configuration["Adyen:ApiKey"]!;
+        o.MerchantAccount = builder.Configuration["Adyen:MerchantAccount"]!;
+    })
+    .AddAsaas(o => { o.ApiKey = builder.Configuration["Asaas:ApiKey"]!; })
+    .AddEfi(o =>
+    {
+        o.ClientId     = builder.Configuration["Efi:ClientId"]!;
+        o.ClientSecret = builder.Configuration["Efi:ClientSecret"]!;
+        o.Version      = EfiApiVersion.Cobrancas;         // or Pix (requires o.Certificate + o.PixKey)
     }));
 ```
+
+> **Partial support is explicit.** Not every gateway exposes every operation. Providers with no standalone customer resource (PagSeguro, Cielo, Adyen, Efí) return a clear "unsupported" error from `Customers.*` (via `UnsupportedCustomerOperations`); Asaas and the others implement it. Each Efí/Mercado Pago version only supports the payment methods its API covers (e.g. `efi@pix` rejects boleto/card). These come back as a failed `PaymentResponse` with an explanatory message, never an exception.
+>
+> **Efí Pix requires mTLS:** set `EfiOptions.Certificate` (the `.p12` from your Efí account) and `EfiOptions.PixKey`; the handler attaches the client certificate to every Pix call.
 
 `AddPagarme`/`AddStripe` also register their `eQuantic.Mapper` mappers, so no extra `AddMappers()` call is needed. You can register **the same provider in multiple versions** at once — each becomes an independent `name@version` entry.
 

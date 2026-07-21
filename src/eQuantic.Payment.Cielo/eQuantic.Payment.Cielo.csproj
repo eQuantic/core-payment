@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Cielo E-commerce API client for eQuantic.Payment. Versioned client (API 3.0) plus the unified IPaymentProvider adapter.</Description>
+    <PackageTags>payment;cielo;pix;boleto;credit-card;brazil</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="eQuantic.Mapper" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\eQuantic.Payment\eQuantic.Payment.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Asaas API client for eQuantic.Payment. Versioned client (API v3) plus the unified IPaymentProvider adapter with real customer support (PIX, boleto, credit card).</Description>
+    <PackageTags>payment;asaas;pix;boleto;credit-card;brazil</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="eQuantic.Mapper" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\eQuantic.Payment\eQuantic.Payment.csproj" />
+  </ItemGroup>
+
+</Project>
