@@ -42,8 +42,10 @@ if (response.Success)
 
 ## What is in it
 
-- **Contracts**: `IPaymentProvider` with its `Charges`, `Refunds` and `Customers` operations, and
-  `IPaymentProviderFactory`, which resolves a provider by name, by name and version, or the default.
+- **Contracts**: `IPaymentProvider` with its `Charges`, `Refunds`, `Customers` and `Notifications`
+  operations, and `IPaymentProviderFactory`, which resolves a provider by name, by name and version, or the
+  default. `Notifications.Verify` checks that a webhook came from the gateway before parsing it; a provider
+  that does not verify its notifications yet answers with a failure.
 - **The unified model**: `CreateChargeRequest`, `CustomerRequest`, `RefundRequest`; `Charge`, `Customer`,
   `Refund`, with the Pix, boleto and card details each method returns; `Money` in centavos.
 - **`PaymentResponse<T>`**: the result or a `PaymentError`, the provider and version that answered, and

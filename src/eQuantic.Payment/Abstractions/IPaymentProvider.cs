@@ -14,4 +14,10 @@ public interface IPaymentProvider
     IChargeOperations Charges { get; }
     IRefundOperations Refunds { get; }
     ICustomerOperations Customers { get; }
+
+    /// <summary>
+    /// Verifies and parses the notifications (webhooks) the gateway sends. A provider that does not verify
+    /// them yet answers every call with a failure.
+    /// </summary>
+    INotificationOperations Notifications => new UnsupportedNotificationOperations(Info);
 }

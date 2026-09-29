@@ -23,4 +23,13 @@ public sealed class StripeOptions
 
     /// <summary>Override the base URL (proxy/mock). Defaults to <c>https://api.stripe.com/v1/</c>.</summary>
     public string? BaseUrl { get; set; }
+
+    /// <summary>
+    /// The signing secret of the webhook endpoint (<c>whsec_xxx</c>), which verifies the events Stripe sends to
+    /// it. Without it, every notification is refused.
+    /// </summary>
+    public string? WebhookSecret { get; set; }
+
+    /// <summary>How far an event's signing time may be from now before it is refused as a replay.</summary>
+    public TimeSpan WebhookTolerance { get; set; } = StripeDefaults.WebhookTolerance;
 }

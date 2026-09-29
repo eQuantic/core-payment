@@ -17,8 +17,9 @@ using eQuantic.Payment.Stripe;
 services.AddPayments(payments => payments
     .AddStripe(o =>
     {
-        o.ApiKey  = configuration["Stripe:ApiKey"]!;
-        o.Version = StripeApiVersion.V2025_04_30_Basil;
+        o.ApiKey        = configuration["Stripe:ApiKey"]!;
+        o.Version       = StripeApiVersion.V2025_04_30_Basil;
+        o.WebhookSecret = configuration["Stripe:WebhookSecret"]; // whsec_…, to verify notifications
     }, asDefault: true));
 ```
 
@@ -31,6 +32,27 @@ the default, and every response names the version that answered.
 |---|---|
 | `StripeApiVersion.V2024_06_20` | the `Stripe-Version` header `2024-06-20` |
 | `StripeApiVersion.V2025_04_30_Basil` (default) | the `Stripe-Version` header `2025-04-30.basil` |
+
+## Notifications
+
+With the endpoint's signing secret in `WebhookSecret`, the provider verifies what Stripe sends and parses it:
+
+```csharp
+var response = stripe.Notifications.Verify(new NotificationRequest
+{
+    Body    = rawBody,                  // the request body exactly as it arrived
+    Headers = headers,                  // Stripe-Signature among them
+});
+
+if (response.Success)
+{
+    var notification = response.Data!; // Id, Type, CreatedAt, ObjectId, ObjectType, LiveMode
+}
+```
+
+A forged or altered event, one signed more than `WebhookTolerance` (five minutes) away from now, and one
+without a valid `Stripe-Signature` all answer a failure with its reason. Stripe retries an event for up to
+three days and promises no order, so deduplicate by `Id` and read the object again before acting on it.
 
 ## Good to know
 
