@@ -45,7 +45,8 @@ package carries its README and the icon.
 
 A release is a tag. Pushing `v1.2.0` builds, tests and packs every package at `1.2.0`, and pushes them
 with their symbols to nuget.org (`.github/workflows/publish.yml`), with the API key the repository keeps
-as the `NUGET_API_KEY` secret.
+as the `NUGET_API_KEY` secret. Only a `vX.Y.Z` tag releases: any other shape (`v1.2.3.4`, `v1.2.3-rc.1`)
+fails the run before anything is built.
 
 ## Solution layout
 
