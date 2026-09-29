@@ -1,0 +1,19 @@
+<Project>
+
+  <!-- A Directory.Build.targets here hides any above it, unless it imports it. -->
+  <PropertyGroup>
+    <_ParentDirectoryBuildTargets>$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../'))</_ParentDirectoryBuildTargets>
+  </PropertyGroup>
+  <Import Project="$(_ParentDirectoryBuildTargets)" Condition="'$(_ParentDirectoryBuildTargets)' != ''" />
+
+  <!--
+    Every package's README is its project's own README.md. An Update, and here rather than in the props:
+    the SDK's default glob has already made the file a None item by the time targets are read, and a
+    second Include would pack it twice. A package without one does not pack at all: NuGet refuses a
+    PackageReadmeFile that is not in the package (NU5039).
+  -->
+  <ItemGroup>
+    <None Update="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
