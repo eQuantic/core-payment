@@ -1,0 +1,38 @@
+# Dependency updates: the NuGet packages in Directory.Packages.props and the actions in .github/workflows,
+# weekly and grouped. Actions are pinned to commit SHAs; Dependabot moves the pins and the version comments.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    commit-message:
+      # Dependabot adds the colon: "🔧 chore: Bump …".
+      prefix: "🔧 chore"
+    groups:
+      eQuantic:
+        patterns:
+          - "eQuantic.*"
+      test-stack:
+        patterns:
+          - "Microsoft.NET.Test.Sdk"
+          - "xunit*"
+      microsoft:
+        patterns:
+          - "Microsoft.*"
+    ignore:
+      # Microsoft.Extensions follows the runtime: its next major comes with the move to the next .NET.
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "👷 ci"
+    groups:
+      actions:
+        patterns:
+          - "*"
