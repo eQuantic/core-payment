@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      # Warnings are errors (Directory.Build.props).
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        run: dotnet test --no-build -c Release
+
+      # What the publish workflow would push, so a package that cannot be published fails here first.
+      - name: Pack
+        run: dotnet pack --no-build -c Release -o artifacts
+
+      # Every package shows its own README and the eQuantic icon on nuget.org.
+      - name: Every package carries its README and the icon
+        run: |
+          for package in artifacts/*.nupkg; do
+            for file in README.md Icon.png; do
+              if ! unzip -l "$package" | awk '{print $4}' | grep -qx "$file"; then
+                echo "::error::$(basename "$package") has no $file"
+                exit 1
+              fi
+            done
+          done
