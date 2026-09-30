@@ -17,6 +17,37 @@ Each gateway has its own client package (`eQuantic.Payment.Pagarme`, `eQuantic.P
    Cielo (3.0)  ·  Adyen (v71)  ·  Efí (pix/cobrancas)  ·  Asaas (v3)
 ```
 
+## Packages
+
+Each package ships on NuGet with its own README and the eQuantic icon:
+
+| Package | What it holds |
+|---|---|
+| `eQuantic.Payment` | the contracts, the unified model, the factory and the registration |
+| `eQuantic.Payment.Stripe` | Stripe |
+| `eQuantic.Payment.Pagarme` | Pagar.me |
+| `eQuantic.Payment.MercadoPago` | Mercado Pago |
+| `eQuantic.Payment.PagSeguro` | PagSeguro / PagBank |
+| `eQuantic.Payment.Cielo` | Cielo |
+| `eQuantic.Payment.Adyen` | Adyen |
+| `eQuantic.Payment.Asaas` | Asaas |
+| `eQuantic.Payment.Efi` | Efí (Gerencianet) |
+
+```bash
+dotnet add package eQuantic.Payment.Stripe
+```
+
+## Building and releasing
+
+CI runs on GitHub Actions for every pull request to `main` and every push to it
+(`.github/workflows/ci.yml`): the build with warnings as errors, the tests, and a pack that checks every
+package carries its README and the icon.
+
+A release is a tag. Pushing `v1.2.0` builds, tests and packs every package at `1.2.0`, and pushes them
+with their symbols to nuget.org (`.github/workflows/publish.yml`), with the API key the repository keeps
+as the `NUGET_API_KEY` secret. Only a `vX.Y.Z` tag releases: any other shape (`v1.2.3.4`, `v1.2.3-rc.1`)
+fails the run before anything is built.
+
 ## Solution layout
 
 ```

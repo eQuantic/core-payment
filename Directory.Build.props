@@ -23,4 +23,22 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
+  <!--
+    What every package shows on nuget.org: the eQuantic mark and its own README. The icon is the same
+    file every eQuantic package carries (assets/Icon.png); the README is each project's own README.md,
+    packed by src/Directory.Build.targets, so the page GitHub shows for a folder is the page its package
+    shows.
+  -->
+  <PropertyGroup Label="Package page">
+    <PackageIcon>Icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)assets/Icon.png" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
 </Project>

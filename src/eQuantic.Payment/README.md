@@ -1,0 +1,66 @@
+# eQuantic.Payment
+
+One contract for every payment gateway: the same request, the same response, and the provider and API
+version that answered, always. The gateways live in their own packages and plug into this one.
+
+## Install
+
+```bash
+dotnet add package eQuantic.Payment
+dotnet add package eQuantic.Payment.Stripe   # or any other provider package
+```
+
+## Register
+
+```csharp
+using eQuantic.Payment.DependencyInjection;
+using eQuantic.Payment.Stripe;
+
+services.AddPayments(payments => payments
+    .AddStripe(o => o.ApiKey = configuration["Stripe:ApiKey"]!, asDefault: true));
+```
+
+## Charge
+
+```csharp
+using eQuantic.Payment.Abstractions;
+using eQuantic.Payment.Models;
+using eQuantic.Payment.Models.Requests;
+
+var provider = factory.GetDefault();                 // IPaymentProviderFactory, from DI
+var response = await provider.Charges.CreateAsync(new CreateChargeRequest
+{
+    Amount = Money.Brl(49.90m),
+    Method = PaymentMethodType.Pix,
+});
+
+if (response.Success)
+{
+    Console.WriteLine($"{response.Data!.Id} via {response.Provider.Key}");
+}
+```
+
+## What is in it
+
+- **Contracts**: `IPaymentProvider` with its `Charges`, `Refunds` and `Customers` operations, and
+  `IPaymentProviderFactory`, which resolves a provider by name, by name and version, or the default.
+- **The unified model**: `CreateChargeRequest`, `CustomerRequest`, `RefundRequest`; `Charge`, `Customer`,
+  `Refund`, with the Pix, boleto and card details each method returns; `Money` in centavos.
+- **`PaymentResponse<T>`**: the result or a `PaymentError`, the provider and version that answered, and
+  the gateway's raw body for auditing.
+- **The registration**: `AddPayments(...)` and the `PaymentBuilder` the provider packages extend.
+
+## Providers
+
+| Package | Gateway |
+|---|---|
+| `eQuantic.Payment.Stripe` | Stripe |
+| `eQuantic.Payment.Pagarme` | Pagar.me |
+| `eQuantic.Payment.MercadoPago` | Mercado Pago |
+| `eQuantic.Payment.PagSeguro` | PagSeguro / PagBank |
+| `eQuantic.Payment.Cielo` | Cielo |
+| `eQuantic.Payment.Adyen` | Adyen |
+| `eQuantic.Payment.Asaas` | Asaas |
+| `eQuantic.Payment.Efi` | Efí (Gerencianet) |
+
+Source, design notes and the other packages: [https://github.com/eQuantic/core-payment](https://github.com/eQuantic/core-payment).
