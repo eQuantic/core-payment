@@ -10,24 +10,26 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Package metadata">
-    <Authors>eQuantic Systems</Authors>
-    <Company>eQuantic Systems</Company>
+    <Authors>eQuantic Tech</Authors>
+    <Company>eQuantic Tech</Company>
     <Product>eQuantic Payment</Product>
-    <Copyright>Copyright © eQuantic Systems</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>2026 eQuantic Tech</Copyright>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageProjectUrl>https://github.com/eQuantic/core-payment</PackageProjectUrl>
     <RepositoryUrl>https://github.com/eQuantic/core-payment</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <VersionPrefix>1.0.0</VersionPrefix>
+    <!-- The development default. A release packs at the version semantic-release computed and writes
+         it back here (.github/scripts/release-prepare.sh), so this reads the last one published. -->
+    <Version>1.0.0</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <!--
-    What every package shows on nuget.org: the eQuantic mark and its own README. The icon is the same
-    file every eQuantic package carries (assets/Icon.png); the README is each project's own README.md,
-    packed by src/Directory.Build.targets, so the page GitHub shows for a folder is the page its package
-    shows.
+    What every package shows on nuget.org: the eQuantic mark, its own README and the MIT license. The
+    icon is the same file every eQuantic package carries (assets/Icon.png); the README is each project's
+    own README.md, packed by src/Directory.Build.targets, so the page GitHub shows for a folder is the
+    page its package shows.
   -->
   <PropertyGroup Label="Package page">
     <PackageIcon>Icon.png</PackageIcon>
@@ -39,6 +41,7 @@
 
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)assets/Icon.png" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
 
 </Project>
