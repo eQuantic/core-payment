@@ -43,10 +43,12 @@ CI runs on GitHub Actions for every pull request to `main` and every push to it
 (`.github/workflows/ci.yml`): the build with warnings as errors, the tests, and a pack that checks every
 package carries its README and the icon.
 
-A release is a tag. Pushing `v1.2.0` builds, tests and packs every package at `1.2.0`, and pushes them
-with their symbols to nuget.org (`.github/workflows/publish.yml`), with the API key the repository keeps
-as the `NUGET_API_KEY` secret. Only a `vX.Y.Z` tag releases: any other shape (`v1.2.3.4`, `v1.2.3-rc.1`)
-fails the run before anything is built.
+A merge is a release. Every push to `main` builds and tests again, then semantic-release reads the commit
+messages since the last tag (`.github/workflows/release.yml`, `release.config.mjs`): `✨ feat` is a minor,
+`🐛 fix` and `⚡ perf` a patch, a `!` or a `BREAKING CHANGE` a major, and anything else releases nothing.
+When there is a release, it writes `CHANGELOG.md`, tags `vX.Y.Z`, pushes every package with its symbols to
+nuget.org with the organization's `NUGET_KEY` secret, creates the GitHub release, and commits the version
+back to `Directory.Build.props` with `[skip ci]`. A push to a `preview` branch releases `X.Y.Z-preview.N`.
 
 ## Solution layout
 
