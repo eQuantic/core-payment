@@ -8,6 +8,12 @@ public static class StripeDefaults
 
     public const string HttpClientName = "eQuantic.Payment.Stripe.V1";
 
+    /// <summary>
+    /// How far an event's signing time may be from now before it is refused as a replay: five minutes, the
+    /// tolerance Stripe's own libraries apply.
+    /// </summary>
+    public static readonly TimeSpan WebhookTolerance = TimeSpan.FromMinutes(5);
+
     /// <summary>The dated header value pinned for each modeled version.</summary>
     public static string StripeVersionHeader(StripeApiVersion version) => version switch
     {

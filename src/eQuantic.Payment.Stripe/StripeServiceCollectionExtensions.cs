@@ -43,7 +43,8 @@ public static class StripeServiceCollectionExtensions
             var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
             var mappers = sp.GetRequiredService<IMapperFactory>();
             var client = new StripeClientV1(httpFactory.CreateClient(StripeDefaults.HttpClientName));
-            return new StripeProviderV1(client, options.Version, mappers);
+            var clock = sp.GetService<TimeProvider>() ?? TimeProvider.System;
+            return new StripeProviderV1(client, options.Version, mappers, options.WebhookSecret, options.WebhookTolerance, clock);
         }, asDefault);
     }
 }
