@@ -1,0 +1,29 @@
+name: Pull request
+
+# What the Workflow section of CLAUDE.md asks of a pull request, where a machine can tell: a
+# <type>/<slug> branch, an `emoji type: description` title (the squash merge makes it the commit
+# message semantic-release reads), and no attribution to Claude in the body. It runs again when the
+# title or the body is edited.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  conventions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: The check fails where it should
+        run: scripts/check-pull-request.sh --self-test
+
+      # Through the environment, so nothing in the pull request is ever run.
+      - name: Branch, title and body
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: scripts/check-pull-request.sh

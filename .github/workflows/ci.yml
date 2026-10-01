@@ -44,3 +44,43 @@ jobs:
               fi
             done
           done
+
+  # This repository plans in the central OpenSpec store, eQuantic/equantic-specs, whose own CI
+  # validates every spec and change strictly. Here: the pointer and nothing else, no planning folder
+  # of its own, a pinned CLI no older than 1.14.0 that installs from its lockfile, and a check that
+  # still fails where it should.
+  openspec:
+    runs-on: ubuntu-latest
+    env:
+      OPENSPEC_TELEMETRY: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - name: The check fails where it should
+        run: scripts/check-openspec.sh --self-test
+
+      - name: The repository points at the store
+        run: scripts/check-openspec.sh
+
+      - name: The pinned CLI installs from its lockfile
+        run: |
+          npm ci --prefix tools/openspec --ignore-scripts --no-audit --no-fund
+          tools/openspec/node_modules/.bin/openspec --version
+
+  # The session-start hook's cloud path is one no laptop takes: run it the way a fresh container
+  # would, with a hostile global git config, and check each of its promises.
+  session-start:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - name: The hook keeps its promises, on a cloud container and on a laptop
+        run: scripts/check-session-start.sh

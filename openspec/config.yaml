@@ -1,0 +1,6 @@
+# Planning lives in the central OpenSpec store, eQuantic/equantic-specs, as the `core` workstream:
+# specs under openspec/specs/core/, changes under openspec/changes/, named core-<what-it-delivers>.
+# This file only points there. The context and the rules are the store's own openspec/config.yaml
+# and its workstreams/core.md; this repository keeps no openspec/specs or openspec/changes, and
+# CI's openspec job (scripts/check-openspec.sh) fails when either appears or this file says more.
+store: equantic-specs
