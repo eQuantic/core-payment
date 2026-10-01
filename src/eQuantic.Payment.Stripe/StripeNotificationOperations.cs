@@ -113,6 +113,12 @@ public sealed class StripeNotificationOperations(
             using var document = JsonDocument.Parse(body);
             var root = document.RootElement;
 
+            // Any JSON can carry a valid signature once the secret signs it; only an event is one.
+            if (root.GetProperty("object").GetString() != "event")
+            {
+                throw new JsonException("Its object is not 'event'.");
+            }
+
             string? objectId = null;
             string? objectType = null;
             if (root.TryGetProperty("data", out var data)
@@ -130,7 +136,7 @@ public sealed class StripeNotificationOperations(
                 CreatedAt = DateTimeOffset.FromUnixTimeSeconds(root.GetProperty("created").GetInt64()),
                 ObjectId = objectId,
                 ObjectType = objectType,
-                LiveMode = root.TryGetProperty("livemode", out var liveMode) && liveMode.ValueKind == JsonValueKind.True,
+                LiveMode = root.GetProperty("livemode").GetBoolean(),
                 ApiVersion = root.TryGetProperty("api_version", out var apiVersion) && apiVersion.ValueKind == JsonValueKind.String
                     ? apiVersion.GetString()
                     : null,

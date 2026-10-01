@@ -38,6 +38,8 @@ the default, and every response names the version that answered.
 With the endpoint's signing secret in `WebhookSecret`, the provider verifies what Stripe sends and parses it:
 
 ```csharp
+using eQuantic.Payment.Models.Requests;
+
 var response = stripe.Notifications.Verify(new NotificationRequest
 {
     Body    = rawBody,                  // the request body exactly as it arrived
@@ -50,8 +52,9 @@ if (response.Success)
 }
 ```
 
-A forged or altered event, one signed more than `WebhookTolerance` (five minutes) away from now, and one
-without a valid `Stripe-Signature` all answer a failure with its reason. Stripe retries an event for up to
+A forged or altered event, one signed more than `WebhookTolerance` (five minutes) away from now, one
+without a valid `Stripe-Signature`, and a signed body that is not a Stripe event all answer a failure with
+its reason. Stripe retries an event for up to
 three days and promises no order, so deduplicate by `Id` and read the object again before acting on it.
 
 ## Good to know

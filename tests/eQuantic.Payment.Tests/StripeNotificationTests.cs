@@ -122,14 +122,21 @@ public class StripeNotificationTests
         Assert.Equal("webhook_secret_missing", response.Error!.Code);
     }
 
-    [Fact]
-    public void A_signed_body_that_is_not_an_event_is_refused()
+    [Theory]
+    [InlineData("""{ "hello": "world" }""")]
+    [InlineData("""[ "evt_1" ]""")]
+    [InlineData("""{ "id": "ch_1", "object": "charge", "type": "card", "created": 1769999990, "livemode": false }""")]
+    [InlineData("""{ "id": "evt_1", "type": "payment_intent.succeeded", "created": 1769999990, "livemode": false }""")]
+    [InlineData("""{ "id": "evt_1", "object": "event", "type": "payment_intent.succeeded", "created": 1769999990 }""")]
+    [InlineData("""{ "id": "evt_1", "object": "event", "type": "payment_intent.succeeded", "created": 1769999990, "livemode": "false" }""")]
+    [InlineData("""{ "id": "evt_1", "object": "event", "type": "payment_intent.succeeded", "created": "yesterday", "livemode": false }""")]
+    public void A_signed_body_that_is_not_a_stripe_event_is_refused(string body)
     {
         var t = Now.ToUnixTimeSeconds();
-        const string body = """{ "hello": "world" }""";
 
         var response = Notifications().Verify(Request(body, Header(t, Sign(body, t))));
 
+        Assert.False(response.Success);
         Assert.Equal("payload_invalid", response.Error!.Code);
     }
 
