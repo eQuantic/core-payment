@@ -42,15 +42,18 @@ if (response.Success)
 
 ## What is in it
 
-- **Contracts**: `IPaymentProvider` with its `Charges`, `Refunds`, `Customers` and `Notifications`
-  operations, and `IPaymentProviderFactory`, which resolves a provider by name, by name and version, or the
-  default. `Notifications.Verify` checks that a webhook came from the gateway before parsing it; a provider
-  that does not verify its notifications yet answers with a failure.
+- **Contracts**: `IPaymentProvider` with its `Charges`, `Refunds`, `Customers`, `PaymentMethods` and
+  `Notifications` operations, and `IPaymentProviderFactory`, which resolves a provider by name, by name and
+  version, or the default. `Notifications.Verify` checks that a webhook came from the gateway before parsing
+  it; `PaymentMethods` saves a customer's card to charge it later with the customer away
+  (`CreateChargeRequest.OffSession`); `Customers.UpdateAsync` keeps a customer in step. A provider that does
+  not do one of these yet answers with a failure.
 - **The unified model**: `CreateChargeRequest`, `CaptureRequest`, `CancelRequest`, `RefundRequest`,
   `CustomerRequest`; `Charge`, `Customer`, `Refund`, with the Pix, boleto and card details each method
   returns; `Money` in centavos.
 - **`PaymentResponse<T>`**: the result or a `PaymentError`, the provider and version that answered, and
-  the gateway's raw body for auditing.
+  the gateway's raw body for auditing. A failure can still carry what the gateway returned about the object:
+  a declined charge comes back with its id and status.
 - **The registration**: `AddPayments(...)` and the `PaymentBuilder` the provider packages extend.
 
 ## Retries

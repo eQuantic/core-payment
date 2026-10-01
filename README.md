@@ -56,12 +56,13 @@ back to `Directory.Build.props` with `[skip ci]`. A push to a `preview` branch r
 src/
 ├── eQuantic.Payment/                 # Core: contracts, unified models, factory, DI
 │   ├── Abstractions/                 # IPaymentProvider, IChargeOperations, IRefundOperations,
-│   │                                 #   ICustomerOperations, INotificationOperations,
-│   │                                 #   IPaymentProviderFactory
+│   │                                 #   ICustomerOperations, IPaymentMethodOperations,
+│   │                                 #   INotificationOperations, IPaymentProviderFactory
 │   ├── Models/                       # Money, PaymentStatus, PaymentMethodType, ProviderInfo,
 │   │   ├── Requests/                 #   CreateChargeRequest, CaptureRequest, CancelRequest, RefundRequest,
-│   │   │                             #   CustomerRequest, AddressRequest
-│   │   └── Results/                  #   Charge, Customer, Refund (+ Pix/Boleto/Card outputs)
+│   │   │                             #   CustomerRequest, AddressRequest, PaymentMethodSetupRequest
+│   │   └── Results/                  #   Charge, Customer, Refund (+ Pix/Boleto/Card outputs),
+│   │                                 #   PaymentMethodSetup, SavedPaymentMethod
 │   ├── Http/                         # PaymentHttpClientBase, ApiResult<T>
 │   └── DependencyInjection/          # AddPayments(...), PaymentBuilder, PaymentRegistry, factory
 │
