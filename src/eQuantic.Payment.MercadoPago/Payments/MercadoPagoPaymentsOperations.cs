@@ -15,7 +15,7 @@ internal sealed class MercadoPagoPaymentsOperations(MercadoPagoPaymentsClient cl
     public async Task<PaymentResponse<Charge>> CreateAsync(CreateChargeRequest request, CancellationToken cancellationToken = default)
     {
         var body = mappers.GetMapper<CreateChargeRequest, MercadoPagoPaymentRequest>().Map(request)!;
-        var result = await client.CreatePaymentAsync(body, cancellationToken).ConfigureAwait(false);
+        var result = await client.CreatePaymentAsync(body, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
     }
 
@@ -30,25 +30,32 @@ internal sealed class MercadoPagoPaymentsOperations(MercadoPagoPaymentsClient cl
         return MapCharge(result);
     }
 
-    public async Task<PaymentResponse<Charge>> CaptureAsync(string chargeId, Money? amount = null, CancellationToken cancellationToken = default)
+    public Task<PaymentResponse<Charge>> CaptureAsync(string chargeId, Money? amount = null, CancellationToken cancellationToken = default)
+        => CaptureAsync(new CaptureRequest { ChargeId = chargeId, Amount = amount }, cancellationToken);
+
+    public async Task<PaymentResponse<Charge>> CaptureAsync(CaptureRequest request, CancellationToken cancellationToken = default)
     {
-        if (!long.TryParse(chargeId, out var id))
+        if (!long.TryParse(request.ChargeId, out var id))
         {
-            return PaymentResponse<Charge>.Fail(info, new PaymentError { Message = $"Invalid Mercado Pago payment id '{chargeId}'." });
+            return PaymentResponse<Charge>.Fail(info, new PaymentError { Message = $"Invalid Mercado Pago payment id '{request.ChargeId}'." });
         }
 
-        var result = await client.CapturePaymentAsync(id, new MercadoPagoCaptureRequest { Capture = true, TransactionAmount = amount?.Amount }, cancellationToken).ConfigureAwait(false);
+        var body = new MercadoPagoCaptureRequest { Capture = true, TransactionAmount = request.Amount?.Amount };
+        var result = await client.CapturePaymentAsync(id, body, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
     }
 
-    public async Task<PaymentResponse<Charge>> CancelAsync(string chargeId, CancellationToken cancellationToken = default)
+    public Task<PaymentResponse<Charge>> CancelAsync(string chargeId, CancellationToken cancellationToken = default)
+        => CancelAsync(new CancelRequest { ChargeId = chargeId }, cancellationToken);
+
+    public async Task<PaymentResponse<Charge>> CancelAsync(CancelRequest request, CancellationToken cancellationToken = default)
     {
-        if (!long.TryParse(chargeId, out var id))
+        if (!long.TryParse(request.ChargeId, out var id))
         {
-            return PaymentResponse<Charge>.Fail(info, new PaymentError { Message = $"Invalid Mercado Pago payment id '{chargeId}'." });
+            return PaymentResponse<Charge>.Fail(info, new PaymentError { Message = $"Invalid Mercado Pago payment id '{request.ChargeId}'." });
         }
 
-        var result = await client.CancelPaymentAsync(id, cancellationToken).ConfigureAwait(false);
+        var result = await client.CancelPaymentAsync(id, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
     }
 
@@ -59,7 +66,7 @@ internal sealed class MercadoPagoPaymentsOperations(MercadoPagoPaymentsClient cl
             return PaymentResponse<Refund>.Fail(info, new PaymentError { Message = $"Invalid Mercado Pago payment id '{request.ChargeId}'." });
         }
 
-        var result = await client.CreateRefundAsync(id, new MercadoPagoRefundRequest { Amount = request.Amount?.Amount }, cancellationToken).ConfigureAwait(false);
+        var result = await client.CreateRefundAsync(id, new MercadoPagoRefundRequest { Amount = request.Amount?.Amount }, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess || result.Data is null)
         {
             return PaymentResponse<Refund>.Fail(info, MercadoPagoErrorMapper.ToError(result), result.RawBody);

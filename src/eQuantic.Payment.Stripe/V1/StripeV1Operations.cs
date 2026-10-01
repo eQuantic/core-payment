@@ -17,7 +17,7 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
     {
         var context = new StripeRequestContext { Today = DateOnly.FromDateTime(DateTime.UtcNow) };
         var form = mappers.GetMapper<CreateChargeRequest, StripeForm, StripeRequestContext>(context).Map(request)!;
-        var result = await client.CreatePaymentIntentAsync(form, cancellationToken).ConfigureAwait(false);
+        var result = await client.CreatePaymentIntentAsync(form, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
     }
 
@@ -27,23 +27,29 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
         return MapCharge(result);
     }
 
-    public async Task<PaymentResponse<Charge>> CaptureAsync(string chargeId, Money? amount = null, CancellationToken cancellationToken = default)
+    public Task<PaymentResponse<Charge>> CaptureAsync(string chargeId, Money? amount = null, CancellationToken cancellationToken = default)
+        => CaptureAsync(new CaptureRequest { ChargeId = chargeId, Amount = amount }, cancellationToken);
+
+    public async Task<PaymentResponse<Charge>> CaptureAsync(CaptureRequest request, CancellationToken cancellationToken = default)
     {
-        var form = amount is { } a ? [new KeyValuePair<string, string>("amount_to_capture", a.AmountInCents.ToString())] : (IEnumerable<KeyValuePair<string, string>>?)null;
-        var result = await client.CapturePaymentIntentAsync(chargeId, form, cancellationToken).ConfigureAwait(false);
+        var form = request.Amount is { } a ? [new KeyValuePair<string, string>("amount_to_capture", a.AmountInCents.ToString())] : (IEnumerable<KeyValuePair<string, string>>?)null;
+        var result = await client.CapturePaymentIntentAsync(request.ChargeId, form, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
     }
 
-    public async Task<PaymentResponse<Charge>> CancelAsync(string chargeId, CancellationToken cancellationToken = default)
+    public Task<PaymentResponse<Charge>> CancelAsync(string chargeId, CancellationToken cancellationToken = default)
+        => CancelAsync(new CancelRequest { ChargeId = chargeId }, cancellationToken);
+
+    public async Task<PaymentResponse<Charge>> CancelAsync(CancelRequest request, CancellationToken cancellationToken = default)
     {
-        var result = await client.CancelPaymentIntentAsync(chargeId, cancellationToken).ConfigureAwait(false);
+        var result = await client.CancelPaymentIntentAsync(request.ChargeId, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
     }
 
     async Task<PaymentResponse<Refund>> IRefundOperations.CreateAsync(RefundRequest request, CancellationToken cancellationToken)
     {
         var form = mappers.GetMapper<RefundRequest, StripeForm>().Map(request)!;
-        var result = await client.CreateRefundAsync(form, cancellationToken).ConfigureAwait(false);
+        var result = await client.CreateRefundAsync(form, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess || result.Data is null)
         {
             return PaymentResponse<Refund>.Fail(info, StripeErrorMapper.ToError(result), result.RawBody);

@@ -18,7 +18,7 @@ internal sealed class AdyenV71Operations(AdyenClientV71 client, ProviderInfo inf
         var body = mappers.GetMapper<CreateChargeRequest, AdyenPaymentRequest>().Map(request)!;
         body.MerchantAccount = merchantAccount;
 
-        var result = await client.CreatePaymentAsync(body, cancellationToken).ConfigureAwait(false);
+        var result = await client.CreatePaymentAsync(body, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess || result.Data is null)
         {
             return PaymentResponse<Charge>.Fail(info, AdyenErrorMapper.ToError(result), result.RawBody);
@@ -50,24 +50,30 @@ internal sealed class AdyenV71Operations(AdyenClientV71 client, ProviderInfo inf
             Message = "Adyen Checkout has no GET payment-by-id; use the AUTHORISATION webhook or POST /payments/details for status.",
         }));
 
-    public async Task<PaymentResponse<Charge>> CaptureAsync(string chargeId, Money? amount = null, CancellationToken cancellationToken = default)
+    public Task<PaymentResponse<Charge>> CaptureAsync(string chargeId, Money? amount = null, CancellationToken cancellationToken = default)
+        => CaptureAsync(new CaptureRequest { ChargeId = chargeId, Amount = amount }, cancellationToken);
+
+    public async Task<PaymentResponse<Charge>> CaptureAsync(CaptureRequest request, CancellationToken cancellationToken = default)
     {
         // Adyen requires an amount to capture; it is included when supplied and otherwise omitted (Adyen then rejects it).
         var body = new AdyenCaptureRequest
         {
             MerchantAccount = merchantAccount,
-            Amount = ToAmount(amount),
-            Reference = chargeId,
+            Amount = ToAmount(request.Amount),
+            Reference = request.ChargeId,
         };
 
-        var result = await client.CaptureAsync(chargeId, body, cancellationToken).ConfigureAwait(false);
+        var result = await client.CaptureAsync(request.ChargeId, body, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapModificationCharge(result);
     }
 
-    public async Task<PaymentResponse<Charge>> CancelAsync(string chargeId, CancellationToken cancellationToken = default)
+    public Task<PaymentResponse<Charge>> CancelAsync(string chargeId, CancellationToken cancellationToken = default)
+        => CancelAsync(new CancelRequest { ChargeId = chargeId }, cancellationToken);
+
+    public async Task<PaymentResponse<Charge>> CancelAsync(CancelRequest request, CancellationToken cancellationToken = default)
     {
-        var body = new AdyenCancelRequest { MerchantAccount = merchantAccount, Reference = chargeId };
-        var result = await client.CancelAsync(chargeId, body, cancellationToken).ConfigureAwait(false);
+        var body = new AdyenCancelRequest { MerchantAccount = merchantAccount, Reference = request.ChargeId };
+        var result = await client.CancelAsync(request.ChargeId, body, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapModificationCharge(result);
     }
 
@@ -81,7 +87,7 @@ internal sealed class AdyenV71Operations(AdyenClientV71 client, ProviderInfo inf
             Reference = request.ChargeId,
         };
 
-        var result = await client.RefundAsync(request.ChargeId, body, cancellationToken).ConfigureAwait(false);
+        var result = await client.RefundAsync(request.ChargeId, body, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess || result.Data is null)
         {
             return PaymentResponse<Refund>.Fail(info, AdyenErrorMapper.ToError(result), result.RawBody);

@@ -26,6 +26,14 @@ public sealed class CreateChargeRequest
     /// <summary>When <c>false</c>, card charges are only authorized and must be captured later.</summary>
     public bool Capture { get; init; } = true;
 
+    /// <summary>
+    /// The key the gateway recognizes a retry of this request by, answering it with the first one's result
+    /// instead of acting twice. Derive it from your own id for the attempt, so a retry after a timeout carries
+    /// the same key; at most 64 characters. Gateways without idempotency keys ignore it, and those that need
+    /// one send a fresh key when it is omitted.
+    /// </summary>
+    public string? IdempotencyKey { get; init; }
+
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
 }
 

@@ -16,7 +16,7 @@ internal sealed class MercadoPagoOrdersOperations(MercadoPagoOrdersClient client
     public async Task<PaymentResponse<Charge>> CreateAsync(CreateChargeRequest request, CancellationToken cancellationToken = default)
     {
         var body = mappers.GetMapper<CreateChargeRequest, MercadoPagoOrderRequest>().Map(request)!;
-        var result = await client.CreateOrderAsync(body, cancellationToken).ConfigureAwait(false);
+        var result = await client.CreateOrderAsync(body, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
     }
 
@@ -26,22 +26,29 @@ internal sealed class MercadoPagoOrdersOperations(MercadoPagoOrdersClient client
         return MapCharge(result);
     }
 
-    public async Task<PaymentResponse<Charge>> CaptureAsync(string chargeId, Money? amount = null, CancellationToken cancellationToken = default)
+    public Task<PaymentResponse<Charge>> CaptureAsync(string chargeId, Money? amount = null, CancellationToken cancellationToken = default)
+        => CaptureAsync(new CaptureRequest { ChargeId = chargeId, Amount = amount }, cancellationToken);
+
+    /// <remarks>The Orders API captures what was authorized; it takes no amount.</remarks>
+    public async Task<PaymentResponse<Charge>> CaptureAsync(CaptureRequest request, CancellationToken cancellationToken = default)
     {
-        var result = await client.CaptureOrderAsync(chargeId, cancellationToken).ConfigureAwait(false);
+        var result = await client.CaptureOrderAsync(request.ChargeId, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
     }
 
-    public async Task<PaymentResponse<Charge>> CancelAsync(string chargeId, CancellationToken cancellationToken = default)
+    public Task<PaymentResponse<Charge>> CancelAsync(string chargeId, CancellationToken cancellationToken = default)
+        => CancelAsync(new CancelRequest { ChargeId = chargeId }, cancellationToken);
+
+    public async Task<PaymentResponse<Charge>> CancelAsync(CancelRequest request, CancellationToken cancellationToken = default)
     {
-        var result = await client.CancelOrderAsync(chargeId, cancellationToken).ConfigureAwait(false);
+        var result = await client.CancelOrderAsync(request.ChargeId, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
     }
 
     async Task<PaymentResponse<Refund>> IRefundOperations.CreateAsync(RefundRequest request, CancellationToken cancellationToken)
     {
         var body = new MercadoPagoOrderRefundRequest { Amount = request.Amount is { } a ? MercadoPagoOrderWire.ToAmount(a.Amount) : null };
-        var result = await client.RefundOrderAsync(request.ChargeId, body, cancellationToken).ConfigureAwait(false);
+        var result = await client.RefundOrderAsync(request.ChargeId, body, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess || result.Data is null)
         {
             return PaymentResponse<Refund>.Fail(info, MercadoPagoErrorMapper.ToError(result), result.RawBody);
