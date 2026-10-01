@@ -61,5 +61,6 @@ three days and promises no order, so deduplicate by `Id` and read the object aga
 
 - Requests are form-encoded with a Bearer secret key; every PaymentIntent is read with `latest_charge` expanded, so card, Pix and boleto details come back inline.
 - A boleto needs the payer's full address (`CustomerRequest.Address`), and it expires in days (`expires_after_days`, 0 to 60).
+- An `IdempotencyKey` on a create, capture, cancel or refund goes as `Idempotency-Key`: for 24 hours, Stripe answers a retry under the same key with the first response, and refuses one whose parameters differ.
 
 Source and the other providers: [https://github.com/eQuantic/core-payment](https://github.com/eQuantic/core-payment).

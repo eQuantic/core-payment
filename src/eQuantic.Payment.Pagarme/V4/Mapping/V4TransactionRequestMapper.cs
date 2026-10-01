@@ -44,7 +44,7 @@ public sealed class V4TransactionRequestMapper : IMapper<CreateChargeRequest, V4
                 break;
 
             case PaymentMethodType.Pix:
-                tx.PixExpirationDate = DateTimeOffset.UtcNow.Add(source.Pix?.ExpiresIn ?? TimeSpan.FromHours(1));
+                tx.PixExpirationDate = (source.AttemptedAt ?? DateTimeOffset.UtcNow).Add(source.Pix?.ExpiresIn ?? TimeSpan.FromHours(1));
                 break;
 
             case PaymentMethodType.Boleto:

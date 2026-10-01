@@ -1,12 +1,12 @@
 namespace eQuantic.Payment.Models.Requests;
 
-/// <summary>Provider-agnostic refund request.</summary>
-public sealed class RefundRequest
+/// <summary>Provider-agnostic capture of a card charge that was only authorized.</summary>
+public sealed class CaptureRequest
 {
     /// <summary>Provider charge id returned in <c>Charge.Id</c>.</summary>
     public required string ChargeId { get; init; }
 
-    /// <summary>Amount to refund; omit for a full refund.</summary>
+    /// <summary>Amount to capture; omit to capture what was authorized.</summary>
     public Money? Amount { get; init; }
 
     /// <summary>

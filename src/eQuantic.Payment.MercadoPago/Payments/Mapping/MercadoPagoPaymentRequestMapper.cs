@@ -36,7 +36,7 @@ public sealed class MercadoPagoPaymentRequestMapper : IMapper<CreateChargeReques
                 break;
 
             case PaymentMethodType.Pix:
-                request.DateOfExpiration = DateTimeOffset.UtcNow.Add(source.Pix?.ExpiresIn ?? TimeSpan.FromHours(1));
+                request.DateOfExpiration = (source.AttemptedAt ?? DateTimeOffset.UtcNow).Add(source.Pix?.ExpiresIn ?? TimeSpan.FromHours(1));
                 break;
 
             case PaymentMethodType.Boleto:

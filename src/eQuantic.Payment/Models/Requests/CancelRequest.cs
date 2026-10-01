@@ -1,13 +1,10 @@
 namespace eQuantic.Payment.Models.Requests;
 
-/// <summary>Provider-agnostic refund request.</summary>
-public sealed class RefundRequest
+/// <summary>Provider-agnostic cancellation of a charge not yet settled.</summary>
+public sealed class CancelRequest
 {
     /// <summary>Provider charge id returned in <c>Charge.Id</c>.</summary>
     public required string ChargeId { get; init; }
-
-    /// <summary>Amount to refund; omit for a full refund.</summary>
-    public Money? Amount { get; init; }
 
     /// <summary>
     /// The key the gateway recognizes a retry of this request by, answering it with the first one's result

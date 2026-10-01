@@ -23,9 +23,14 @@ public abstract class MercadoPagoClientBase(HttpClient httpClient) : PaymentHttp
     /// <summary>Sends a JSON POST/PUT carrying a fresh idempotency key.</summary>
     protected Task<ApiResult<TResponse>> SendIdempotentAsync<TResponse>(
         HttpMethod method, string path, object? body, CancellationToken cancellationToken)
+        => SendIdempotentAsync<TResponse>(method, path, body, idempotencyKey: null, cancellationToken);
+
+    /// <summary>Sends a JSON POST/PUT carrying the caller's idempotency key, or a fresh one when it is null.</summary>
+    protected Task<ApiResult<TResponse>> SendIdempotentAsync<TResponse>(
+        HttpMethod method, string path, object? body, string? idempotencyKey, CancellationToken cancellationToken)
     {
         var request = new HttpRequestMessage(method, path);
-        request.Headers.TryAddWithoutValidation("X-Idempotency-Key", Guid.NewGuid().ToString());
+        request.Headers.TryAddWithoutValidation("X-Idempotency-Key", idempotencyKey ?? Guid.NewGuid().ToString());
         if (body is not null)
         {
             request.Content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");

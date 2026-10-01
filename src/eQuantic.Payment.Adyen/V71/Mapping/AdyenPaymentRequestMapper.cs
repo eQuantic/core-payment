@@ -28,7 +28,8 @@ public sealed class AdyenPaymentRequestMapper : IMapper<CreateChargeRequest, Ady
         var request = new AdyenPaymentRequest
         {
             Amount = new AdyenAmount { Value = source.Amount.AmountInCents, Currency = source.Amount.Currency },
-            Reference = source.ReferenceId ?? Guid.NewGuid().ToString("N"),
+            // A retry under the same key must send the same reference, so the key stands in for a missing one.
+            Reference = source.ReferenceId ?? source.IdempotencyKey ?? Guid.NewGuid().ToString("N"),
             ReturnUrl = PlaceholderReturnUrl,
             PaymentMethod = MapPaymentMethod(source),
             ShopperEmail = customer?.Email,
@@ -61,7 +62,7 @@ public sealed class AdyenPaymentRequestMapper : IMapper<CreateChargeRequest, Ady
                 break;
 
             case PaymentMethodType.Pix:
-                request.SessionValidity = FormatOffset(DateTimeOffset.UtcNow.Add(source.Pix?.ExpiresIn ?? TimeSpan.FromHours(1)));
+                request.SessionValidity = FormatOffset((source.AttemptedAt ?? DateTimeOffset.UtcNow).Add(source.Pix?.ExpiresIn ?? TimeSpan.FromHours(1)));
                 break;
 
             case PaymentMethodType.Boleto:

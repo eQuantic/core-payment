@@ -15,7 +15,7 @@ internal sealed class PagSeguroOrdersOperations(PagSeguroOrdersClient client, Pr
     public async Task<PaymentResponse<Charge>> CreateAsync(CreateChargeRequest request, CancellationToken cancellationToken = default)
     {
         var body = mappers.GetMapper<CreateChargeRequest, PagSeguroOrderRequest>().Map(request)!;
-        var result = await client.CreateOrderAsync(body, cancellationToken).ConfigureAwait(false);
+        var result = await client.CreateOrderAsync(body, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess || result.Data is null)
         {
             return PaymentResponse<Charge>.Fail(info, PagSeguroErrorMapper.ToError(result), result.RawBody);
@@ -48,21 +48,27 @@ internal sealed class PagSeguroOrdersOperations(PagSeguroOrdersClient client, Pr
             : PaymentResponse<Charge>.Ok(info, charge, orderResult.RawBody);
     }
 
-    public async Task<PaymentResponse<Charge>> CaptureAsync(string chargeId, Money? amount = null, CancellationToken cancellationToken = default)
+    public Task<PaymentResponse<Charge>> CaptureAsync(string chargeId, Money? amount = null, CancellationToken cancellationToken = default)
+        => CaptureAsync(new CaptureRequest { ChargeId = chargeId, Amount = amount }, cancellationToken);
+
+    public async Task<PaymentResponse<Charge>> CaptureAsync(CaptureRequest request, CancellationToken cancellationToken = default)
     {
-        var result = await client.CaptureChargeAsync(chargeId, amount?.AmountInCents, cancellationToken).ConfigureAwait(false);
+        var result = await client.CaptureChargeAsync(request.ChargeId, request.Amount?.AmountInCents, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
     }
 
-    public async Task<PaymentResponse<Charge>> CancelAsync(string chargeId, CancellationToken cancellationToken = default)
+    public Task<PaymentResponse<Charge>> CancelAsync(string chargeId, CancellationToken cancellationToken = default)
+        => CancelAsync(new CancelRequest { ChargeId = chargeId }, cancellationToken);
+
+    public async Task<PaymentResponse<Charge>> CancelAsync(CancelRequest request, CancellationToken cancellationToken = default)
     {
-        var result = await client.CancelChargeAsync(chargeId, amount: null, cancellationToken).ConfigureAwait(false);
+        var result = await client.CancelChargeAsync(request.ChargeId, amount: null, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
     }
 
     async Task<PaymentResponse<Refund>> IRefundOperations.CreateAsync(RefundRequest request, CancellationToken cancellationToken)
     {
-        var result = await client.CancelChargeAsync(request.ChargeId, request.Amount?.AmountInCents, cancellationToken).ConfigureAwait(false);
+        var result = await client.CancelChargeAsync(request.ChargeId, request.Amount?.AmountInCents, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess || result.Data is null)
         {
             return PaymentResponse<Refund>.Fail(info, PagSeguroErrorMapper.ToError(result), result.RawBody);
