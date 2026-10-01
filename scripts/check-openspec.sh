@@ -41,7 +41,8 @@ check() {
     failed=1
   else
     declarations="$(grep -vE '^[[:space:]]*(#|$)' "$config")"
-    if ! printf '%s\n' "$declarations" | grep -qxE "store:[[:space:]]*[\"']?${STORE_ID}[\"']?[[:space:]]*(#.*)?" ||
+    if ! printf '%s\n' "$declarations" |
+      grep -qxE "store:[[:space:]]+(${STORE_ID}|\"${STORE_ID}\"|'${STORE_ID}')([[:space:]]+#.*)?[[:space:]]*" ||
       [ "$(printf '%s\n' "$declarations" | wc -l | tr -d ' ')" != "1" ]; then
       echo "::error file=openspec/config.yaml::openspec/config.yaml must declare 'store: $STORE_ID' and nothing else, since the context and the rules are the store's ($STORE); it declares:"
       printf '%s\n' "$declarations" | sed 's/^/    /'
@@ -72,7 +73,7 @@ check() {
 }
 
 self_test() {
-  local here work failures=0
+  local here work failures=0 cases=0
   here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   work="$(mktemp -d)"
 
@@ -83,6 +84,7 @@ self_test() {
   }
   expect() { # name, pass|fail, text the output must hold
     local output status
+    cases=$((cases + 1))
     output="$(check "$work/$1" 2>&1)"
     status=$?
     if { [ "$2" = pass ] && ((status != 0)); } || { [ "$2" = fail ] && ((status == 0)); } ||
@@ -99,6 +101,18 @@ self_test() {
   fixture quoted
   printf "store: '%s'   # the store\n" "$STORE_ID" >"$work/quoted/openspec/config.yaml"
   expect quoted pass "points at $STORE"
+
+  fixture double-quoted
+  printf 'store: "%s"\n' "$STORE_ID" >"$work/double-quoted/openspec/config.yaml"
+  expect double-quoted pass "points at $STORE"
+
+  fixture unbalanced
+  printf 'store: "%s'"'"'\n' "$STORE_ID" >"$work/unbalanced/openspec/config.yaml"
+  expect unbalanced fail "nothing else"
+
+  fixture no-space
+  printf 'store:%s\n' "$STORE_ID" >"$work/no-space/openspec/config.yaml"
+  expect no-space fail "nothing else"
 
   fixture specs
   mkdir -p "$work/specs/openspec/specs/payments"
@@ -136,10 +150,10 @@ self_test() {
 
   rm -rf "$work"
   if ((failures > 0)); then
-    echo "::error::the self-test of scripts/check-openspec.sh failed $failures case(s)"
+    echo "::error::the self-test of scripts/check-openspec.sh failed $failures of $cases case(s)"
     return 1
   fi
-  echo "self-test: scripts/check-openspec.sh passes and fails where it should (10 cases)"
+  echo "self-test: scripts/check-openspec.sh passes and fails where it should ($cases cases)"
 }
 
 if [ "${1:-}" = "--self-test" ]; then
