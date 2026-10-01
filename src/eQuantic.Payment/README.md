@@ -58,8 +58,9 @@ if (response.Success)
 What moves money (create, capture, cancel and refund) takes an `IdempotencyKey`, so a retry after a timeout
 is answered with the first result instead of charging twice. Use one key per operation, derived from your own
 id for the attempt and the operation (`attempt-42:create`, `attempt-42:refund`), and reuse it only to retry
-that same request: a gateway refuses a key reused with other parameters. Keep it to 64 characters, Adyen's
-limit. The table below says what each gateway gets.
+that same request: a gateway refuses a key reused with other parameters. A retry sends the same request, its
+`AttemptedAt` included, so what counts from the moment of the request (a Pix expiry, a boleto's days) comes out
+the same. Keep the key to 64 characters, Adyen's limit. The table below says what each gateway gets.
 
 ## Providers
 
@@ -67,7 +68,7 @@ limit. The table below says what each gateway gets.
 |---|---|---|
 | `eQuantic.Payment.Stripe` | Stripe | `Idempotency-Key`, the caller's; none without one |
 | `eQuantic.Payment.Pagarme` | Pagar.me | none sent |
-| `eQuantic.Payment.MercadoPago` | Mercado Pago | `X-Idempotency-Key`, the caller's; without one, a fresh key on create and refund and none on capture and cancel |
+| `eQuantic.Payment.MercadoPago` | Mercado Pago | `X-Idempotency-Key`, the caller's; without one, a fresh key, except on a Payments API capture or cancel, which carries none |
 | `eQuantic.Payment.PagSeguro` | PagSeguro / PagBank | `x-idempotency-key`, the caller's or a fresh one |
 | `eQuantic.Payment.Cielo` | Cielo | none sent |
 | `eQuantic.Payment.Adyen` | Adyen | `Idempotency-Key`, the caller's or a fresh one |

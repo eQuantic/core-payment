@@ -31,7 +31,7 @@ public sealed class EfiOneStepRequestMapper : IMapper<CreateChargeRequest, EfiOn
 
         if (source.Method == PaymentMethodType.Boleto)
         {
-            var due = source.Boleto?.DueDate ?? DateOnly.FromDateTime(DateTime.UtcNow).AddDays(3);
+            var due = source.Boleto?.DueDate ?? DateOnly.FromDateTime((source.AttemptedAt ?? DateTimeOffset.UtcNow).UtcDateTime).AddDays(3);
             request.Payment.BankingBillet = new EfiBankingBillet
             {
                 ExpireAt = due.ToString("yyyy-MM-dd"),

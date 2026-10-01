@@ -30,10 +30,19 @@ public sealed class CreateChargeRequest
     /// The key the gateway recognizes a retry of this request by, answering it with the first one's result
     /// instead of acting twice. One key per operation: derive it from your own id for the attempt and the
     /// operation (<c>attempt-42:create</c>, <c>attempt-42:refund</c>), and reuse it only to retry that same
-    /// request, since a gateway refuses a key reused with other parameters. At most 64 characters. Gateways
-    /// without idempotency keys ignore it, and those that need one send a fresh key when it is omitted.
+    /// request, since a gateway refuses a key reused with other parameters: a retry sends the same request,
+    /// <see cref="AttemptedAt"/> included. At most 64 characters. Gateways without idempotency keys ignore it, and
+    /// those that need one send a fresh key when it is omitted.
     /// </summary>
     public string? IdempotencyKey { get; init; }
+
+    /// <summary>
+    /// When this attempt was first made. What a gateway gets relative to the moment of the request (a Pix expiry
+    /// from <see cref="PixDetails.ExpiresIn"/>, a boleto's default due date, Stripe's boleto days) counts from it,
+    /// so a retry under the same <see cref="IdempotencyKey"/> sends what the first try sent. Defaults to the time
+    /// of the call.
+    /// </summary>
+    public DateTimeOffset? AttemptedAt { get; init; }
 
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
 }

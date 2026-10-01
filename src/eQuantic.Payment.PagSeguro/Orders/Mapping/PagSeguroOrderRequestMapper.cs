@@ -43,7 +43,7 @@ public sealed class PagSeguroOrderRequestMapper : IMapper<CreateChargeRequest, P
                 new PagSeguroQrCodeRequest
                 {
                     Amount = amount,
-                    ExpirationDate = DateTimeOffset.UtcNow.Add(source.Pix?.ExpiresIn ?? TimeSpan.FromHours(1)),
+                    ExpirationDate = (source.AttemptedAt ?? DateTimeOffset.UtcNow).Add(source.Pix?.ExpiresIn ?? TimeSpan.FromHours(1)),
                 },
             ];
             return order;
@@ -119,7 +119,7 @@ public sealed class PagSeguroOrderRequestMapper : IMapper<CreateChargeRequest, P
 
     private static PagSeguroBoletoRequest MapBoleto(CreateChargeRequest request)
     {
-        var due = request.Boleto?.DueDate ?? DateOnly.FromDateTime(DateTime.UtcNow).AddDays(3);
+        var due = request.Boleto?.DueDate ?? DateOnly.FromDateTime((request.AttemptedAt ?? DateTimeOffset.UtcNow).UtcDateTime).AddDays(3);
         var customer = request.Customer;
         return new PagSeguroBoletoRequest
         {

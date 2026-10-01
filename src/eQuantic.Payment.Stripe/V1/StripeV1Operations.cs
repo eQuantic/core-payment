@@ -15,7 +15,7 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
 {
     public async Task<PaymentResponse<Charge>> CreateAsync(CreateChargeRequest request, CancellationToken cancellationToken = default)
     {
-        var context = new StripeRequestContext { Today = DateOnly.FromDateTime(DateTime.UtcNow) };
+        var context = new StripeRequestContext { Today = DateOnly.FromDateTime((request.AttemptedAt ?? DateTimeOffset.UtcNow).UtcDateTime) };
         var form = mappers.GetMapper<CreateChargeRequest, StripeForm, StripeRequestContext>(context).Map(request)!;
         var result = await client.CreatePaymentIntentAsync(form, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);

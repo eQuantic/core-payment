@@ -41,7 +41,7 @@ public sealed class AsaasPaymentRequestMapper : IMapper<CreateChargeRequest, Asa
     public AsaasPaymentRequest? Map(CreateChargeRequest? source, AsaasPaymentRequest? destination) => Map(source);
 
     private static DateOnly ResolveDueDate(CreateChargeRequest source)
-        => source.Boleto?.DueDate ?? DateOnly.FromDateTime(DateTime.UtcNow.Date).AddDays(DefaultDueDateDays);
+        => source.Boleto?.DueDate ?? DateOnly.FromDateTime((source.AttemptedAt ?? DateTimeOffset.UtcNow).UtcDateTime).AddDays(DefaultDueDateDays);
 
     private static void MapCard(CreateChargeRequest source, AsaasPaymentRequest request)
     {
