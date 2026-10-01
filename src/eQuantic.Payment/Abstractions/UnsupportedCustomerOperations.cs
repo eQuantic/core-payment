@@ -17,6 +17,9 @@ public sealed class UnsupportedCustomerOperations(ProviderInfo info) : ICustomer
     public Task<PaymentResponse<Customer>> GetAsync(string customerId, CancellationToken cancellationToken = default)
         => Task.FromResult(Unsupported());
 
+    public Task<PaymentResponse<Customer>> UpdateAsync(string customerId, CustomerRequest request, CancellationToken cancellationToken = default)
+        => Task.FromResult(Unsupported());
+
     private PaymentResponse<Customer> Unsupported()
         => PaymentResponse<Customer>.Fail(info, new PaymentError
         {

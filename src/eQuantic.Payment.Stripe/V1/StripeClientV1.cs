@@ -51,20 +51,51 @@ public class StripeClientV1(HttpClient httpClient) : PaymentHttpClientBase(httpC
         => PostFormAsync<StripeRefund>("refunds", form, idempotencyKey, cancellationToken);
 
     public Task<ApiResult<StripeCustomer>> CreateCustomerAsync(IEnumerable<KeyValuePair<string, string>> form, CancellationToken cancellationToken = default)
-        => SendFormAsync<StripeCustomer>(HttpMethod.Post, "customers", form, cancellationToken);
+        => CreateCustomerAsync(form, idempotencyKey: null, cancellationToken);
+
+    /// <summary>Creates a customer (<c>POST /v1/customers</c>) under <paramref name="idempotencyKey"/>, when one is given.</summary>
+    public Task<ApiResult<StripeCustomer>> CreateCustomerAsync(IEnumerable<KeyValuePair<string, string>> form, string? idempotencyKey, CancellationToken cancellationToken)
+        => PostFormAsync<StripeCustomer>("customers", form, idempotencyKey, cancellationToken);
 
     public Task<ApiResult<StripeCustomer>> GetCustomerAsync(string id, CancellationToken cancellationToken = default)
         => SendFormAsync<StripeCustomer>(HttpMethod.Get, $"customers/{id}", form: null, cancellationToken);
 
+    /// <summary>Updates a customer (<c>POST /v1/customers/{id}</c>); the fields the form leaves out stay as they are.</summary>
+    public Task<ApiResult<StripeCustomer>> UpdateCustomerAsync(string id, IEnumerable<KeyValuePair<string, string>> form, CancellationToken cancellationToken = default)
+        => SendFormAsync<StripeCustomer>(HttpMethod.Post, $"customers/{Uri.EscapeDataString(id)}", form, cancellationToken);
+
+    /// <summary>Starts saving a payment method (<c>POST /v1/setup_intents</c>).</summary>
+    public Task<ApiResult<StripeSetupIntent>> CreateSetupIntentAsync(IEnumerable<KeyValuePair<string, string>> form, string? idempotencyKey, CancellationToken cancellationToken = default)
+        => PostFormAsync<StripeSetupIntent>("setup_intents", form, idempotencyKey, cancellationToken);
+
+    public Task<ApiResult<StripeSetupIntent>> GetSetupIntentAsync(string id, CancellationToken cancellationToken = default)
+        => SendFormAsync<StripeSetupIntent>(HttpMethod.Get, $"setup_intents/{Uri.EscapeDataString(id)}", form: null, cancellationToken);
+
+    /// <summary>
+    /// A page of up to 100 of a customer's saved payment methods of one type
+    /// (<c>GET /v1/customers/{id}/payment_methods</c>), after <paramref name="startingAfter"/> when one is given.
+    /// </summary>
+    public Task<ApiResult<StripeList<StripePaymentMethod>>> ListCustomerPaymentMethodsAsync(
+        string customerId, string type, string? startingAfter = null, CancellationToken cancellationToken = default)
+    {
+        var path = $"customers/{Uri.EscapeDataString(customerId)}/payment_methods?type={Uri.EscapeDataString(type)}&limit=100";
+        if (startingAfter is not null)
+        {
+            path += $"&starting_after={Uri.EscapeDataString(startingAfter)}";
+        }
+
+        return SendFormAsync<StripeList<StripePaymentMethod>>(HttpMethod.Get, path, form: null, cancellationToken);
+    }
+
+    /// <summary>Detaches a payment method from its customer (<c>POST /v1/payment_methods/{id}/detach</c>).</summary>
+    public Task<ApiResult<StripePaymentMethod>> DetachPaymentMethodAsync(string id, CancellationToken cancellationToken = default)
+        => PostFormAsync<StripePaymentMethod>($"payment_methods/{Uri.EscapeDataString(id)}/detach", form: null, idempotencyKey: null, cancellationToken);
+
     private Task<ApiResult<TResponse>> PostFormAsync<TResponse>(
         string path, IEnumerable<KeyValuePair<string, string>>? form, string? idempotencyKey, CancellationToken cancellationToken)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, path);
-        if (form is not null)
-        {
-            request.Content = new FormUrlEncodedContent(form);
-        }
-
+        // A body even when there is nothing to send: Stripe's form endpoints expect its content type on every POST.
+        var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = new FormUrlEncodedContent(form ?? []) };
         if (idempotencyKey is not null)
         {
             request.Headers.TryAddWithoutValidation("Idempotency-Key", idempotencyKey);

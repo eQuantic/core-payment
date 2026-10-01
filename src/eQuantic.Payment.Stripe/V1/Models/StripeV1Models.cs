@@ -333,6 +333,90 @@ public sealed class StripeShipping
     public string? Phone { get; set; }
 }
 
+// ── SetupIntent ───────────────────────────────────────────────────────────────
+
+/// <summary>The <c>setup_intent</c> object: a payment method being saved for later charges.</summary>
+public sealed class StripeSetupIntent
+{
+    /// <summary><c>seti_...</c>.</summary>
+    public string Id { get; set; } = string.Empty;
+
+    public string? Object { get; set; }
+    public string? ClientSecret { get; set; }
+    public long? Created { get; set; }
+
+    /// <summary><c>cus_...</c> (expandable; kept as id).</summary>
+    public string? Customer { get; set; }
+
+    public string? Description { get; set; }
+    public StripeErrorDetail? LastSetupError { get; set; }
+    public bool Livemode { get; set; }
+    public Dictionary<string, string>? Metadata { get; set; }
+    public StripeNextAction? NextAction { get; set; }
+
+    /// <summary><c>pm_...</c> (expandable; kept as id): the payment method saved once the setup succeeds.</summary>
+    public string? PaymentMethod { get; set; }
+
+    public List<string>? PaymentMethodTypes { get; set; }
+
+    /// <summary><c>requires_payment_method</c> | <c>requires_confirmation</c> | <c>requires_action</c> | <c>processing</c> | <c>canceled</c> | <c>succeeded</c>.</summary>
+    public string? Status { get; set; }
+
+    /// <summary><c>on_session</c> | <c>off_session</c>.</summary>
+    public string? Usage { get; set; }
+
+    public string? CancellationReason { get; set; }
+}
+
+// ── PaymentMethod ─────────────────────────────────────────────────────────────
+
+/// <summary>The <c>payment_method</c> object.</summary>
+public sealed class StripePaymentMethod
+{
+    /// <summary><c>pm_...</c>.</summary>
+    public string Id { get; set; } = string.Empty;
+
+    public string? Object { get; set; }
+    public StripeBillingDetails? BillingDetails { get; set; }
+    public StripePaymentMethodCard? Card { get; set; }
+    public long? Created { get; set; }
+
+    /// <summary><c>cus_...</c> (expandable; kept as id); null once detached.</summary>
+    public string? Customer { get; set; }
+
+    public bool Livemode { get; set; }
+    public Dictionary<string, string>? Metadata { get; set; }
+
+    /// <summary>Discriminator, e.g. <c>card</c>, <c>boleto</c>, <c>pix</c>.</summary>
+    public string? Type { get; set; }
+}
+
+/// <summary>The <c>card</c> of a saved payment method.</summary>
+public sealed class StripePaymentMethodCard
+{
+    /// <summary><c>amex</c>, <c>mastercard</c>, <c>visa</c>, <c>elo</c>, <c>hipercard</c>, …</summary>
+    public string? Brand { get; set; }
+
+    public string? Country { get; set; }
+    public int ExpMonth { get; set; }
+    public int ExpYear { get; set; }
+    public string? Fingerprint { get; set; }
+
+    /// <summary><c>credit</c> | <c>debit</c> | <c>prepaid</c> | <c>unknown</c>.</summary>
+    public string? Funding { get; set; }
+
+    public string? Last4 { get; set; }
+}
+
+/// <summary>A page of a Stripe list (<c>{ "object": "list", "data": [...] }</c>).</summary>
+public sealed class StripeList<T>
+{
+    public string? Object { get; set; }
+    public List<T> Data { get; set; } = [];
+    public bool HasMore { get; set; }
+    public string? Url { get; set; }
+}
+
 // ── Error ─────────────────────────────────────────────────────────────────────
 
 /// <summary>Error envelope <c>{ "error": { ... } }</c>.</summary>
@@ -367,4 +451,10 @@ public sealed class StripeErrorDetail
 
     /// <summary>Failed charge id (card errors).</summary>
     public string? Charge { get; set; }
+
+    /// <summary>The PaymentIntent the error is about, when it concerns one: a declined charge still has its id and status.</summary>
+    public StripePaymentIntent? PaymentIntent { get; set; }
+
+    /// <summary>The SetupIntent the error is about, when it concerns one.</summary>
+    public StripeSetupIntent? SetupIntent { get; set; }
 }

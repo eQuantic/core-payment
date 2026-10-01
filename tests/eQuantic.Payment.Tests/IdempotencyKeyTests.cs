@@ -209,7 +209,8 @@ public class IdempotencyKeyTests
         var stripe = new StripeProviderV1(new StripeClientV1(Http(stripeHandler, StripeDefaults.BaseUrl)), StripeApiVersion.V2025_04_30_Basil, TestMapperFactory.Create());
         var (stripeFirst, stripeSecond) = await TwiceAsync(stripe, stripeHandler, Retried(PaymentMethodType.Boleto, new DateOnly(2026, 1, 6)));
         Assert.Equal(stripeFirst, stripeSecond);
-        Assert.Contains("payment_method_options%5Bboleto%5D%5Bexpires_after_days%5D=5", stripeFirst);
+        // Midnight in UTC is still 31 December in São Paulo, where Stripe counts the voucher's days: six to 6 January.
+        Assert.Contains("payment_method_options%5Bboleto%5D%5Bexpires_after_days%5D=6", stripeFirst);
 
         var paymentsHandler = Refusing(2);
         var paymentsHttp = Http(paymentsHandler, MercadoPagoDefaults.BaseUrl);

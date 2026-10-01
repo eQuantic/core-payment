@@ -9,6 +9,19 @@ public sealed class CreateChargeRequest
 
     public CustomerRequest? Customer { get; init; }
 
+    /// <summary>
+    /// The gateway's id of a customer created earlier (<c>Customers.CreateAsync</c>). Required to charge a payment
+    /// method saved for that customer (<see cref="CardDetails.PaymentMethodId"/>).
+    /// </summary>
+    public string? CustomerId { get; init; }
+
+    /// <summary>
+    /// Charges with the customer away, as a renewal does, against a saved payment method. A card that would ask
+    /// the customer to authenticate is declined instead (Stripe answers <c>authentication_required</c>), and the
+    /// customer has to come back to pay.
+    /// </summary>
+    public bool OffSession { get; init; }
+
     /// <summary>Required when <see cref="Method"/> is credit/debit card.</summary>
     public CardDetails? Card { get; init; }
 
@@ -39,8 +52,9 @@ public sealed class CreateChargeRequest
     /// <summary>
     /// When this attempt was first made. What a gateway gets relative to the moment of the request (a Pix expiry
     /// from <see cref="PixDetails.ExpiresIn"/>, a boleto's default due date, Stripe's boleto days) counts from it,
-    /// so a retry under the same <see cref="IdempotencyKey"/> sends what the first try sent. Defaults to the time
-    /// of the call.
+    /// so a retry under the same <see cref="IdempotencyKey"/> sends what the first try sent. Set it with the key:
+    /// left out, it is the time of each call, a retry counts from its own moment, and a gateway can refuse it for
+    /// carrying other parameters under the same key.
     /// </summary>
     public DateTimeOffset? AttemptedAt { get; init; }
 
@@ -50,8 +64,17 @@ public sealed class CreateChargeRequest
 /// <summary>Card data (or a previously tokenized card).</summary>
 public sealed class CardDetails
 {
-    /// <summary>Provider card/payment-method token. When set, the raw card fields are ignored.</summary>
+    /// <summary>
+    /// Provider single-use card token (Stripe <c>tok_xxx</c>). When set, the raw card fields are ignored. A Stripe
+    /// <c>pm_xxx</c> here is charged as <see cref="PaymentMethodId"/>, as 1.x documented.
+    /// </summary>
     public string? Token { get; init; }
+
+    /// <summary>
+    /// A payment method saved for <see cref="CreateChargeRequest.CustomerId"/> (Stripe <c>pm_xxx</c>, from
+    /// <c>PaymentMethods.SetupAsync</c>). When set, <see cref="Token"/> and the raw card fields are ignored.
+    /// </summary>
+    public string? PaymentMethodId { get; init; }
 
     public string? Number { get; init; }
     public string? HolderName { get; init; }

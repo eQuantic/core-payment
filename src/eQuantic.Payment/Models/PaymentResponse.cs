@@ -11,7 +11,10 @@ public sealed class PaymentResponse<TData>
 
     public required bool Success { get; init; }
 
-    /// <summary>Normalized data when <see cref="Success"/> is <c>true</c>.</summary>
+    /// <summary>
+    /// Normalized data when <see cref="Success"/> is <c>true</c>. On a failure, what the gateway still returned
+    /// about the object, when it did: a declined charge, with its id and status.
+    /// </summary>
     public TData? Data { get; init; }
 
     /// <summary>Normalized error when <see cref="Success"/> is <c>false</c>.</summary>
@@ -33,6 +36,16 @@ public sealed class PaymentResponse<TData>
         Provider = provider,
         Success = false,
         Error = error,
+        RawResponse = rawResponse,
+    };
+
+    /// <summary>A failure that still carries what the gateway returned about the object, such as a declined charge.</summary>
+    public static PaymentResponse<TData> Fail(ProviderInfo provider, PaymentError error, TData? data, string? rawResponse) => new()
+    {
+        Provider = provider,
+        Success = false,
+        Error = error,
+        Data = data,
         RawResponse = rawResponse,
     };
 }

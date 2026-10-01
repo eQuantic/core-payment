@@ -33,7 +33,11 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
 
         var method = ToPaymentMethodType(source.Method);
         form.Add("payment_method_types[]", method);
-        form.Add("payment_method_data[type]", method);
+
+        if (source.CustomerId is { } customerId)
+        {
+            form.Add("customer", customerId);
+        }
 
         if (!string.IsNullOrWhiteSpace(source.Description))
         {
@@ -45,10 +49,17 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
             case PaymentMethodType.CreditCard:
             case PaymentMethodType.DebitCard:
                 form.Add("capture_method", source.Capture ? "automatic" : "manual");
-                if (source.Card?.Token is { } token)
+                if (SavedPaymentMethod(source.Card) is { } paymentMethodId)
                 {
-                    // A payment-method (pm_) or single-use card token (tok_).
-                    form.Add("payment_method_data[card][token]", token);
+                    form.Add("payment_method", paymentMethodId);
+                }
+                else
+                {
+                    form.Add("payment_method_data[type]", method);
+                    if (source.Card?.Token is { } token)
+                    {
+                        form.Add("payment_method_data[card][token]", token);
+                    }
                 }
 
                 var installments = source.Card?.Installments ?? 1;
@@ -62,13 +73,21 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
                 break;
 
             case PaymentMethodType.Pix:
+                form.Add("payment_method_data[type]", method);
                 var seconds = (int)(source.Pix?.ExpiresIn ?? TimeSpan.FromHours(1)).TotalSeconds;
                 form.Add("payment_method_options[pix][expires_after_seconds]", seconds.ToString());
                 break;
 
             case PaymentMethodType.Boleto:
+                form.Add("payment_method_data[type]", method);
                 AppendBoleto(form, source, today);
                 break;
+        }
+
+        // With the customer away, Stripe declines what would ask for authentication rather than wait for it.
+        if (source.OffSession)
+        {
+            form.Add("off_session", "true");
         }
 
         if (source.Customer?.Email is { } email)
@@ -94,6 +113,13 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
 
     public StripeForm? Map(CreateChargeRequest? source, StripeForm? destination) => Map(source);
 
+    /// <summary>
+    /// The saved payment method to charge: <see cref="CardDetails.PaymentMethodId"/>, or a <c>pm_</c> id passed as
+    /// <see cref="CardDetails.Token"/>, which 1.x documented as accepted there.
+    /// </summary>
+    internal static string? SavedPaymentMethod(CardDetails? card) =>
+        card?.PaymentMethodId ?? (card?.Token is { } token && token.StartsWith("pm_", StringComparison.Ordinal) ? token : null);
+
     private static void AppendBoleto(StripeForm form, CreateChargeRequest request, DateOnly today)
     {
         if (request.Customer?.DocumentDigits is { } taxId)
@@ -101,15 +127,15 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
             form.Add("payment_method_data[boleto][tax_id]", taxId);
         }
 
-        // Stripe boleto requires full billing_details (name, email, address).
+        // Stripe boleto requires full billing_details (name, email, address), the name and address in ASCII.
         if (request.Customer is { } customer)
         {
-            form.Add("payment_method_data[billing_details][name]", customer.Name);
+            form.Add("payment_method_data[billing_details][name]", StripeBoleto.Ascii(customer.Name));
             form.Add("payment_method_data[billing_details][email]", customer.Email);
-            AppendAddress(form, "payment_method_data[billing_details][address]", customer.Address);
+            AppendAddress(form, "payment_method_data[billing_details][address]", customer.Address, StripeBoleto.Ascii);
         }
 
-        // Boleto expiry is expressed in whole days from today (0–60), not an absolute timestamp.
+        // Boleto expiry is expressed in whole days from São Paulo's today (0–60), not an absolute timestamp.
         if (request.Boleto?.DueDate is { } due)
         {
             var days = Math.Clamp(due.DayNumber - today.DayNumber, 0, BoletoMaxDays);
@@ -117,21 +143,22 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
         }
     }
 
-    internal static void AppendAddress(StripeForm form, string prefix, AddressRequest? address)
+    internal static void AppendAddress(StripeForm form, string prefix, AddressRequest? address, Func<string, string>? text = null)
     {
         if (address is null)
         {
             return;
         }
 
-        form.Add($"{prefix}[line1]", address.Line1);
+        text ??= value => value;
+        form.Add($"{prefix}[line1]", text(address.Line1));
         if (address.Line2 is { } line2)
         {
-            form.Add($"{prefix}[line2]", line2);
+            form.Add($"{prefix}[line2]", text(line2));
         }
 
-        form.Add($"{prefix}[city]", address.City);
-        form.Add($"{prefix}[state]", address.State);
+        form.Add($"{prefix}[city]", text(address.City));
+        form.Add($"{prefix}[state]", text(address.State));
         form.Add($"{prefix}[postal_code]", address.ZipCode);
         form.Add($"{prefix}[country]", address.Country);
     }

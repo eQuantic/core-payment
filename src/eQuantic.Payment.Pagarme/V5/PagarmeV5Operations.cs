@@ -103,6 +103,9 @@ internal sealed class PagarmeV5CustomerOperations(PagarmeClientV5 client, Provid
         return MapCustomer(result);
     }
 
+    public Task<PaymentResponse<Customer>> UpdateAsync(string customerId, CustomerRequest request, CancellationToken cancellationToken = default)
+        => CustomerUpdates.Unsupported(info);
+
     private PaymentResponse<Customer> MapCustomer(ApiResult<V5CustomerResponse> result)
     {
         if (!result.IsSuccess || result.Data is null)

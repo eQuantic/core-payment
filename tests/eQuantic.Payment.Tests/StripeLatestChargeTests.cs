@@ -13,6 +13,14 @@ namespace eQuantic.Payment.Tests;
 /// </summary>
 public class StripeLatestChargeTests
 {
+    private static (StripeProviderV1 provider, StubHttpMessageHandler handler) CreateProvider(StubHttpMessageHandler handler, DateTimeOffset now)
+    {
+        var http = new HttpClient(handler) { BaseAddress = new Uri(StripeDefaults.BaseUrl) };
+        var provider = new StripeProviderV1(
+            new StripeClientV1(http), StripeApiVersion.V2025_04_30_Basil, TestMapperFactory.Create(), null, StripeDefaults.WebhookTolerance, new FixedClock(now));
+        return (provider, handler);
+    }
+
     private static (StripeProviderV1 provider, StubHttpMessageHandler handler) CreateProvider()
     {
         var handler = new StubHttpMessageHandler();
@@ -96,7 +104,10 @@ public class StripeLatestChargeTests
             "boleto_display_details": { "number": "34191.79001", "pdf": "https://stripe/boleto.pdf", "expires_at": 1893456000 } } }
         """);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        // 22:30 in São Paulo is already the next day in UTC: the voucher's days count from São Paulo's today.
+        var now = new DateTimeOffset(2026, 9, 30, 22, 30, 0, TimeSpan.FromHours(-3));
+        (provider, handler) = CreateProvider(handler, now);
+        var today = new DateOnly(2026, 9, 30);
         var response = await provider.Charges.CreateAsync(new CreateChargeRequest
         {
             Amount = Money.Brl(99m),

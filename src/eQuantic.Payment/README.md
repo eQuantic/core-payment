@@ -42,15 +42,18 @@ if (response.Success)
 
 ## What is in it
 
-- **Contracts**: `IPaymentProvider` with its `Charges`, `Refunds`, `Customers` and `Notifications`
-  operations, and `IPaymentProviderFactory`, which resolves a provider by name, by name and version, or the
-  default. `Notifications.Verify` checks that a webhook came from the gateway before parsing it; a provider
-  that does not verify its notifications yet answers with a failure.
+- **Contracts**: `IPaymentProvider` with its `Charges`, `Refunds`, `Customers`, `PaymentMethods` and
+  `Notifications` operations, and `IPaymentProviderFactory`, which resolves a provider by name, by name and
+  version, or the default. `Notifications.Verify` checks that a webhook came from the gateway before parsing
+  it; `PaymentMethods` saves a customer's card to charge it later with the customer away
+  (`CreateChargeRequest.OffSession`); `Customers.UpdateAsync` keeps a customer in step. A provider that does
+  not do one of these yet answers with a failure.
 - **The unified model**: `CreateChargeRequest`, `CaptureRequest`, `CancelRequest`, `RefundRequest`,
   `CustomerRequest`; `Charge`, `Customer`, `Refund`, with the Pix, boleto and card details each method
   returns; `Money` in centavos.
 - **`PaymentResponse<T>`**: the result or a `PaymentError`, the provider and version that answered, and
-  the gateway's raw body for auditing.
+  the gateway's raw body for auditing. A failure can still carry what the gateway returned about the object:
+  a declined charge comes back with its id and status.
 - **The registration**: `AddPayments(...)` and the `PaymentBuilder` the provider packages extend.
 
 ## Retries
@@ -58,9 +61,11 @@ if (response.Success)
 What moves money (create, capture, cancel and refund) takes an `IdempotencyKey`, so a retry after a timeout
 is answered with the first result instead of charging twice. Use one key per operation, derived from your own
 id for the attempt and the operation (`attempt-42:create`, `attempt-42:refund`), and reuse it only to retry
-that same request: a gateway refuses a key reused with other parameters. A retry sends the same request, its
-`AttemptedAt` included, so what counts from the moment of the request (a Pix expiry, a boleto's days) comes out
-the same. Keep the key to 64 characters, Adyen's limit. The table below says what each gateway gets.
+that same request: a gateway refuses a key reused with other parameters. Set `AttemptedAt` with the key, to
+the moment of the first try, and send it again with every retry, so what counts from the moment of the request
+(a Pix expiry, a boleto's days) comes out the same; left out, each call counts from its own moment. Keep the
+key to 64 characters, Adyen's limit. The table below says what each gateway gets. A customer's creation takes
+a key too (`CustomerRequest.IdempotencyKey`): Stripe sends it, and the other gateways ignore it.
 
 ## Providers
 
