@@ -47,10 +47,19 @@ public sealed class BoletoOutput
     /// <summary>Digitable line (linha digitável).</summary>
     public string? DigitableLine { get; init; }
 
-    /// <summary>URL of the printable boleto (PDF/HTML).</summary>
+    /// <summary>URL of the printable boleto: the PDF when there is one, otherwise the hosted page.</summary>
     public string? Url { get; init; }
 
+    /// <summary>URL of the voucher's PDF.</summary>
+    public string? PdfUrl { get; init; }
+
+    /// <summary>URL of the page the gateway hosts for the voucher.</summary>
+    public string? HostedUrl { get; init; }
+
     public DateOnly? DueDate { get; init; }
+
+    /// <summary>The moment the voucher stops being payable.</summary>
+    public DateTimeOffset? ExpiresAt { get; init; }
 }
 
 /// <summary>Card payment artifacts.</summary>

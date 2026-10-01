@@ -104,6 +104,9 @@ internal sealed class PagarmeV4Operations(PagarmeClientV4 client, ProviderInfo i
         return MapCustomer(result);
     }
 
+    Task<PaymentResponse<Customer>> ICustomerOperations.UpdateAsync(string customerId, CustomerRequest request, CancellationToken cancellationToken)
+        => CustomerUpdates.Unsupported(info);
+
     private PaymentResponse<Charge> MapCharge(ApiResult<V4TransactionResponse> result)
     {
         if (!result.IsSuccess || result.Data is null)

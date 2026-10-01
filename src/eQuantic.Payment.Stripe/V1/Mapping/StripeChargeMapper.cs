@@ -22,7 +22,7 @@ public sealed class StripeChargeMapper : IMapper<StripePaymentIntent, Charge>
         {
             Id = source.Id,
             ReferenceId = source.Metadata?.GetValueOrDefault("reference_id"),
-            Status = StripeStatusMapper.FromPaymentIntent(source.Status),
+            Status = StripeStatusMapper.FromPaymentIntent(source.Status, source.LastPaymentError?.Code, source.LastPaymentError is not null),
             ProviderStatus = source.Status,
             Amount = Money.FromCents(source.Amount, (source.Currency ?? "brl").ToUpperInvariant()),
             Method = method,
@@ -41,7 +41,11 @@ public sealed class StripeChargeMapper : IMapper<StripePaymentIntent, Charge>
                 {
                     DigitableLine = boleto.Number,
                     Url = boleto.Pdf ?? boleto.HostedVoucherUrl,
-                    DueDate = boleto.ExpiresAt is { } boletoExp ? DateOnly.FromDateTime(DateTimeOffset.FromUnixTimeSeconds(boletoExp).Date) : null,
+                    PdfUrl = boleto.Pdf,
+                    HostedUrl = boleto.HostedVoucherUrl,
+                    // The voucher expires at the end of a São Paulo day, which is already the next day in UTC.
+                    DueDate = boleto.ExpiresAt is { } boletoExp ? StripeBoleto.DayOf(boletoExp) : null,
+                    ExpiresAt = boleto.ExpiresAt is { } expiresAt ? DateTimeOffset.FromUnixTimeSeconds(expiresAt) : null,
                 }
                 : null,
             Card = method is PaymentMethodType.CreditCard or PaymentMethodType.DebitCard

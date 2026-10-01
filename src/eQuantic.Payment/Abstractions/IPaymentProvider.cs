@@ -20,4 +20,10 @@ public interface IPaymentProvider
     /// them yet answers every call with a failure.
     /// </summary>
     INotificationOperations Notifications => new UnsupportedNotificationOperations(Info);
+
+    /// <summary>
+    /// Saves a customer's card for charges made with the customer away, and lists and detaches the cards saved.
+    /// A provider that does not save payment methods yet answers every call with a failure.
+    /// </summary>
+    IPaymentMethodOperations PaymentMethods => new UnsupportedPaymentMethodOperations(Info);
 }

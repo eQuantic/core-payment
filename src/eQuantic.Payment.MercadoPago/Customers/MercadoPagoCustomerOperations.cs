@@ -25,6 +25,9 @@ internal sealed class MercadoPagoCustomerOperations(MercadoPagoCustomerClient cl
         return MapCustomer(result);
     }
 
+    public Task<PaymentResponse<Customer>> UpdateAsync(string customerId, CustomerRequest request, CancellationToken cancellationToken = default)
+        => CustomerUpdates.Unsupported(info);
+
     private PaymentResponse<Customer> MapCustomer(ApiResult<MercadoPagoCustomerResponse> result)
     {
         if (!result.IsSuccess || result.Data is null)

@@ -11,27 +11,31 @@ namespace eQuantic.Payment.Stripe.V1;
 /// </summary>
 internal static class StripeErrorMapper
 {
-    public static PaymentError ToError<T>(ApiResult<T> result)
+    public static PaymentError ToError<T>(ApiResult<T> result) => ToError(Parse(result), result.StatusCode);
+
+    public static PaymentError ToError(StripeErrorDetail? error, int? statusCode) => new()
     {
-        StripeErrorDetail? error = null;
-        if (!string.IsNullOrWhiteSpace(result.RawBody))
+        Code = error?.DeclineCode ?? error?.Code ?? error?.Type,
+        Message = error?.Message ?? $"Stripe request failed (HTTP {statusCode}).",
+        HttpStatusCode = statusCode,
+    };
+
+    /// <summary>The error a failed call answered with, or null when its body is not Stripe's error envelope.</summary>
+    public static StripeErrorDetail? Parse<T>(ApiResult<T> result)
+    {
+        if (string.IsNullOrWhiteSpace(result.RawBody))
         {
-            try
-            {
-                error = JsonSerializer.Deserialize<StripeErrorEnvelope>(result.RawBody, StripeJson.Options)?.Error;
-            }
-            catch (JsonException)
-            {
-                // Fall through to a generic error below.
-            }
+            return null;
         }
 
-        return new PaymentError
+        try
         {
-            Code = error?.DeclineCode ?? error?.Code ?? error?.Type,
-            Message = error?.Message ?? $"Stripe request failed (HTTP {result.StatusCode}).",
-            HttpStatusCode = result.StatusCode,
-        };
+            return JsonSerializer.Deserialize<StripeErrorEnvelope>(result.RawBody, StripeJson.Options)?.Error;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 }
 
