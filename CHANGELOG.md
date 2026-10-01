@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.0](https://github.com/eQuantic/core-payment/compare/v1.0.0...v1.1.0) (2026-10-01)
+
+### Features
+
+* verified gateway notifications, Stripe's signature first ([#7](https://github.com/eQuantic/core-payment/issues/7)) ([3b9d260](https://github.com/eQuantic/core-payment/commit/3b9d260c4afd2c42a25e81f202a455468f425f76))
+
 ## 1.0.0 (2026-09-30)
 
 ### Features
