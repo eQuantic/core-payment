@@ -40,9 +40,10 @@ The working agreement for every session in this repository. It is the same text 
 - **Identity.** The repository commits as `Edgar Mesquita <edgar@equantic.tech>`. In a web session,
   the session-start hook sets that identity in the repository's git config on every new container
   and turns off commit and tag signing there, since the container's signing key is not the owner's.
-- **Issues.** Every change has an issue on the GitHub Project board. When there is none, create it
-  as a sub-issue of its epic or feature, with the right type (Epic, Feature, User Story, Task or
-  Bug).
+- **Issues.** Every change has an issue on the GitHub Project board,
+  [#16](https://github.com/orgs/eQuantic/projects/16). When there is none, create it as a sub-issue
+  of its epic or feature, with the right type (Epic, Feature, User Story, Task or Bug), and add it
+  to the board.
 - **Pull requests.** In English, following `.github/pull_request_template.md`. The pull request
   closes its issue (`Closes #N`) and carries no attribution to Claude: when a tool appends a
   "Generated with…" footer, remove it.
