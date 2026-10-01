@@ -151,11 +151,6 @@ public class StripeNotificationTests
         Assert.Equal("notifications_unsupported", response.Error!.Code);
     }
 
-    private sealed class FixedClock(DateTimeOffset now) : TimeProvider
-    {
-        public override DateTimeOffset GetUtcNow() => now;
-    }
-
     private sealed class NotifyingNothingProvider : IPaymentProvider
     {
         public ProviderInfo Info { get; } = new("quiet", "v1");
