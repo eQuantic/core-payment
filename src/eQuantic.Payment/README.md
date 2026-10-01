@@ -61,9 +61,10 @@ if (response.Success)
 What moves money (create, capture, cancel and refund) takes an `IdempotencyKey`, so a retry after a timeout
 is answered with the first result instead of charging twice. Use one key per operation, derived from your own
 id for the attempt and the operation (`attempt-42:create`, `attempt-42:refund`), and reuse it only to retry
-that same request: a gateway refuses a key reused with other parameters. A retry sends the same request, its
-`AttemptedAt` included, so what counts from the moment of the request (a Pix expiry, a boleto's days) comes out
-the same. Keep the key to 64 characters, Adyen's limit. The table below says what each gateway gets.
+that same request: a gateway refuses a key reused with other parameters. Set `AttemptedAt` with the key, to
+the moment of the first try, and send it again with every retry, so what counts from the moment of the request
+(a Pix expiry, a boleto's days) comes out the same; left out, each call counts from its own moment. Keep the
+key to 64 characters, Adyen's limit. The table below says what each gateway gets.
 
 ## Providers
 

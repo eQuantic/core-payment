@@ -52,8 +52,9 @@ public sealed class CreateChargeRequest
     /// <summary>
     /// When this attempt was first made. What a gateway gets relative to the moment of the request (a Pix expiry
     /// from <see cref="PixDetails.ExpiresIn"/>, a boleto's default due date, Stripe's boleto days) counts from it,
-    /// so a retry under the same <see cref="IdempotencyKey"/> sends what the first try sent. Defaults to the time
-    /// of the call.
+    /// so a retry under the same <see cref="IdempotencyKey"/> sends what the first try sent. Set it with the key:
+    /// left out, it is the time of each call, a retry counts from its own moment, and a gateway can refuse it for
+    /// carrying other parameters under the same key.
     /// </summary>
     public DateTimeOffset? AttemptedAt { get; init; }
 
