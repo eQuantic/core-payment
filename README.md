@@ -41,7 +41,11 @@ dotnet add package eQuantic.Payment.Stripe
 
 CI runs on GitHub Actions for every pull request to `main` and every push to it
 (`.github/workflows/ci.yml`): the build with warnings as errors, the tests, and a pack that checks every
-package carries its README and the icon.
+package carries its README and the icon. Beside them, `openspec` checks that the repository still points at
+the central OpenSpec store and plans nothing of its own (`scripts/check-openspec.sh`), and `session-start`
+runs the session-start hook the way a fresh cloud container would (`scripts/check-session-start.sh`). A
+pull request's branch, title and body are checked against the working agreement
+(`.github/workflows/pull-request.yml`, `scripts/check-pull-request.sh`).
 
 A merge is a release. Every push to `main` builds and tests again, then semantic-release reads the commit
 messages since the last tag (`.github/workflows/release.yml`, `release.config.mjs`): `✨ feat` is a minor,
@@ -243,5 +247,17 @@ They all return `PaymentResponse<T>` with `Provider`, `Success`, `Data`, `Error`
 
 ```bash
 dotnet build          # net10.0, nullable + warnings-as-errors
-dotnet test           # mapping, factory and value-object tests
+dotnet test           # the providers, the mappers, the factory, the value objects, the Workflow guard
 ```
+
+## Contributing
+
+How a change reaches `main` (the `<type>/<slug>` branch, the `emoji type: description` commits, the issue on
+the board, the pull request, GitHub Copilot's review, the squash merge) is the `## Workflow` section of
+[`CLAUDE.md`](CLAUDE.md), the same text in [`AGENTS.md`](AGENTS.md). The history is
+[`docs/LEDGER.md`](docs/LEDGER.md), one line per event.
+
+The specs and the changes are planned in [eQuantic/equantic-specs](https://github.com/eQuantic/equantic-specs),
+the central OpenSpec store, as the `core` workstream: `openspec/config.yaml` here only points there. The
+OpenSpec CLI is pinned in `tools/openspec`; with the store cloned beside this repository and registered
+(`openspec store register ../equantic-specs`), `/opsx:propose` and `/opsx:apply <change>` run here act on it.
