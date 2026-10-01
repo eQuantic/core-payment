@@ -35,5 +35,6 @@ the default, and every response names the version that answered.
 ## Good to know
 
 - Cards need `CardDetails.Brand`, which Mercado Pago takes as the `payment_method_id` (`visa`, `debvisa`…).
+- Creates and refunds carry `X-Idempotency-Key`: the request's `IdempotencyKey`, or a fresh key when it has none. A capture or a cancel carries it only when the request has one.
 
 Source and the other providers: [https://github.com/eQuantic/core-payment](https://github.com/eQuantic/core-payment).

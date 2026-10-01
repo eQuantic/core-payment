@@ -35,5 +35,6 @@ the default, and every response names the version that answered.
 
 - Capture, cancel and refund answer `received`; their final state arrives by webhook. A refusal is HTTP 200 with `resultCode: Refused`.
 - The default host is Adyen's test environment; set `BaseUrl` for live.
+- Every POST carries `Idempotency-Key`: the request's `IdempotencyKey` (at most 64 characters), or a fresh key when it has none.
 
 Source and the other providers: [https://github.com/eQuantic/core-payment](https://github.com/eQuantic/core-payment).
