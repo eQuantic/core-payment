@@ -174,6 +174,74 @@ public class IdempotencyKeyTests
         Assert.All(Enumerable.Range(15, 4), i => Assert.True(Guid.TryParse(handler.Header(i, "Idempotency-Key"), out _)));
     }
 
+    // Far from the wall clock, so a field computed from it instead could not pass for one computed from this.
+    private static readonly DateTimeOffset AttemptedAt = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+    private static CreateChargeRequest Retried(PaymentMethodType method, DateOnly? dueDate = null) => new()
+    {
+        Amount = Money.Brl(25.00m),
+        Method = method,
+        Customer = new CustomerRequest
+        {
+            Name = "Maria",
+            Email = "maria@example.com",
+            Document = "12345678909",
+            Address = new AddressRequest { Line1 = "Av. Paulista, 1000", City = "Sao Paulo", State = "SP", ZipCode = "01310-000" },
+        },
+        Boleto = dueDate is { } due ? new BoletoDetails { DueDate = due } : null,
+        IdempotencyKey = Key,
+        AttemptedAt = AttemptedAt,
+    };
+
+    /// <summary>Sends the same keyed request twice, as a retry does, and returns both bodies.</summary>
+    private static async Task<(string First, string Second)> TwiceAsync(IPaymentProvider provider, StubHttpMessageHandler handler, CreateChargeRequest request)
+    {
+        await provider.Charges.CreateAsync(request);
+        await Task.Delay(TimeSpan.FromMilliseconds(20));
+        await provider.Charges.CreateAsync(request);
+        return (handler.RequestBodies[^2]!, handler.RequestBodies[^1]!);
+    }
+
+    [Fact]
+    public async Task A_retry_under_the_same_key_sends_the_same_request_on_every_gateway_that_takes_one()
+    {
+        var stripeHandler = Refusing(2);
+        var stripe = new StripeProviderV1(new StripeClientV1(Http(stripeHandler, StripeDefaults.BaseUrl)), StripeApiVersion.V2025_04_30_Basil, TestMapperFactory.Create());
+        var (stripeFirst, stripeSecond) = await TwiceAsync(stripe, stripeHandler, Retried(PaymentMethodType.Boleto, new DateOnly(2026, 1, 6)));
+        Assert.Equal(stripeFirst, stripeSecond);
+        Assert.Contains("payment_method_options%5Bboleto%5D%5Bexpires_after_days%5D=5", stripeFirst);
+
+        var paymentsHandler = Refusing(2);
+        var paymentsHttp = Http(paymentsHandler, MercadoPagoDefaults.BaseUrl);
+        var payments = new MercadoPagoPaymentsProvider(new MercadoPagoPaymentsClient(paymentsHttp), new MercadoPagoCustomerClient(paymentsHttp), TestMapperFactory.Create());
+        var (paymentsFirst, paymentsSecond) = await TwiceAsync(payments, paymentsHandler, Retried(PaymentMethodType.Pix));
+        Assert.Equal(paymentsFirst, paymentsSecond);
+        Assert.Contains("2026-01-01T01:00:00", paymentsFirst);
+
+        var ordersHandler = Refusing(2);
+        var ordersHttp = Http(ordersHandler, MercadoPagoDefaults.BaseUrl);
+        var orders = new MercadoPagoOrdersProvider(new MercadoPagoOrdersClient(ordersHttp), new MercadoPagoCustomerClient(ordersHttp), TestMapperFactory.Create());
+        var (ordersFirst, ordersSecond) = await TwiceAsync(orders, ordersHandler, Retried(PaymentMethodType.Pix));
+        Assert.Equal(ordersFirst, ordersSecond);
+        Assert.Contains("2026-01-01T01:00:00", ordersFirst);
+
+        var pagSeguroHandler = Refusing(4);
+        var pagSeguro = new PagSeguroOrdersProvider(new PagSeguroOrdersClient(Http(pagSeguroHandler, PagSeguroDefaults.BaseUrl)), TestMapperFactory.Create());
+        var (pixFirst, pixSecond) = await TwiceAsync(pagSeguro, pagSeguroHandler, Retried(PaymentMethodType.Pix));
+        Assert.Equal(pixFirst, pixSecond);
+        Assert.Contains("2026-01-01T01:00:00", pixFirst);
+        var (boletoFirst, boletoSecond) = await TwiceAsync(pagSeguro, pagSeguroHandler, Retried(PaymentMethodType.Boleto));
+        Assert.Equal(boletoFirst, boletoSecond);
+        Assert.Contains("2026-01-04", boletoFirst);
+
+        var adyenHandler = Refusing(2);
+        var adyen = new AdyenV71Provider(new AdyenClientV71(Http(adyenHandler, AdyenDefaults.BaseUrl)), "TestMerchant", AdyenApiVersion.V71, TestMapperFactory.Create());
+        var (adyenFirst, adyenSecond) = await TwiceAsync(adyen, adyenHandler, Retried(PaymentMethodType.Pix));
+        Assert.Equal(adyenFirst, adyenSecond);
+        Assert.Contains($"\"reference\":\"{Key}\"", adyenFirst);
+        Assert.Contains("2026-01-01T01:00:00", adyenFirst);
+    }
+
     [Fact]
     public async Task A_gateway_without_keys_still_captures_and_cancels_through_the_request()
     {
