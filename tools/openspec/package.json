@@ -1,0 +1,8 @@
+{
+  "name": "core-payment-openspec",
+  "private": true,
+  "description": "The OpenSpec CLI this repository's sessions run, pinned by the lockfile beside it to the version eQuantic/equantic-specs pins.",
+  "devDependencies": {
+    "@fission-ai/openspec": "1.14.0"
+  }
+}
