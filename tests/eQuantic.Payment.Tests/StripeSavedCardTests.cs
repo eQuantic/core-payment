@@ -85,6 +85,60 @@ public class StripeSavedCardTests
     }
 
     [Fact]
+    public async Task A_customer_is_created_under_the_callers_key_and_says_whose_it_is()
+    {
+        var (provider, handler) = CreateProvider();
+        const string Customer = """
+        { "id": "cus_123", "object": "customer", "name": "Maria Souza", "email": "maria@example.com",
+          "metadata": { "billing_account_id": "account-7", "document": "12345678909" } }
+        """;
+        handler.EnqueueJson(HttpStatusCode.OK, Customer);
+        handler.EnqueueJson(HttpStatusCode.OK, Customer);
+        var request = new CustomerRequest
+        {
+            Name = "Maria Souza",
+            Email = "maria@example.com",
+            Document = "123.456.789-09",
+            IdempotencyKey = "account-7:customer",
+            Metadata = new Dictionary<string, string> { ["billing_account_id"] = "account-7" },
+        };
+
+        var created = await provider.Customers.CreateAsync(request);
+        var updated = await provider.Customers.UpdateAsync("cus_123", request);
+
+        Assert.True(created.Success);
+        Assert.True(updated.Success);
+        Assert.EndsWith("customers", handler.RequestPaths[0]);
+        Assert.Equal("account-7:customer", handler.Header(0, "Idempotency-Key"));
+        Assert.Null(handler.Header(1, "Idempotency-Key"));
+        Assert.All(handler.RequestBodies, body =>
+        {
+            Assert.Contains("metadata%5Bbilling_account_id%5D=account-7", body);
+            Assert.Contains("metadata%5Bdocument%5D=12345678909", body);
+        });
+    }
+
+    [Fact]
+    public async Task A_document_entry_of_the_callers_replaces_the_one_written_from_the_document()
+    {
+        var (provider, handler) = CreateProvider();
+        handler.EnqueueJson(HttpStatusCode.OK, """{ "id": "cus_123", "object": "customer", "name": "Maria Souza", "email": "maria@example.com" }""");
+
+        await provider.Customers.CreateAsync(new CustomerRequest
+        {
+            Name = "Maria Souza",
+            Email = "maria@example.com",
+            Document = "123.456.789-09",
+            Metadata = new Dictionary<string, string> { ["document"] = "CPF 123.456.789-09" },
+        });
+
+        var body = handler.LastRequestBody!;
+        Assert.Contains("metadata%5Bdocument%5D=CPF+123.456.789-09", body);
+        Assert.DoesNotContain("metadata%5Bdocument%5D=12345678909", body);
+        Assert.Null(handler.Header(0, "Idempotency-Key"));
+    }
+
+    [Fact]
     public async Task A_card_is_saved_through_a_SetupIntent_whose_secret_the_front_end_confirms()
     {
         var (provider, handler) = CreateProvider();

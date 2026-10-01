@@ -4,7 +4,10 @@ using eQuantic.Payment.Stripe.V1.Models;
 
 namespace eQuantic.Payment.Stripe.V1.Mapping;
 
-/// <summary>Maps a unified <see cref="CustomerRequest"/> to the Stripe <c>POST /v1/customers</c> form body.</summary>
+/// <summary>
+/// Maps a unified <see cref="CustomerRequest"/> to the Stripe <c>POST /v1/customers</c> form body, which an update
+/// (<c>POST /v1/customers/{id}</c>) takes too.
+/// </summary>
 public sealed class StripeCustomerFormMapper : IMapper<CustomerRequest, StripeForm>
 {
     public StripeForm? Map(CustomerRequest? source)
@@ -25,7 +28,15 @@ public sealed class StripeCustomerFormMapper : IMapper<CustomerRequest, StripeFo
             form.Add("phone", phone);
         }
 
-        if (source.DocumentDigits is { } doc)
+        if (source.Metadata is not null)
+        {
+            foreach (var (key, value) in source.Metadata)
+            {
+                form.Add($"metadata[{key}]", value);
+            }
+        }
+
+        if (source.DocumentDigits is { } doc && source.Metadata?.ContainsKey("document") != true)
         {
             form.Add("metadata[document]", doc);
         }

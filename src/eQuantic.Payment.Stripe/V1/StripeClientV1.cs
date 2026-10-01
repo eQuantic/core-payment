@@ -51,7 +51,11 @@ public class StripeClientV1(HttpClient httpClient) : PaymentHttpClientBase(httpC
         => PostFormAsync<StripeRefund>("refunds", form, idempotencyKey, cancellationToken);
 
     public Task<ApiResult<StripeCustomer>> CreateCustomerAsync(IEnumerable<KeyValuePair<string, string>> form, CancellationToken cancellationToken = default)
-        => SendFormAsync<StripeCustomer>(HttpMethod.Post, "customers", form, cancellationToken);
+        => CreateCustomerAsync(form, idempotencyKey: null, cancellationToken);
+
+    /// <summary>Creates a customer (<c>POST /v1/customers</c>) under <paramref name="idempotencyKey"/>, when one is given.</summary>
+    public Task<ApiResult<StripeCustomer>> CreateCustomerAsync(IEnumerable<KeyValuePair<string, string>> form, string? idempotencyKey, CancellationToken cancellationToken)
+        => PostFormAsync<StripeCustomer>("customers", form, idempotencyKey, cancellationToken);
 
     public Task<ApiResult<StripeCustomer>> GetCustomerAsync(string id, CancellationToken cancellationToken = default)
         => SendFormAsync<StripeCustomer>(HttpMethod.Get, $"customers/{id}", form: null, cancellationToken);

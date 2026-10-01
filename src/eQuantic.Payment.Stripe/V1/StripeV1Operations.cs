@@ -115,7 +115,7 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
     async Task<PaymentResponse<Customer>> ICustomerOperations.CreateAsync(CustomerRequest request, CancellationToken cancellationToken)
     {
         var form = mappers.GetMapper<CustomerRequest, StripeForm>().Map(request)!;
-        var result = await client.CreateCustomerAsync(form, cancellationToken).ConfigureAwait(false);
+        var result = await client.CreateCustomerAsync(form, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCustomer(result);
     }
 

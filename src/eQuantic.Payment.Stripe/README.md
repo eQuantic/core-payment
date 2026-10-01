@@ -42,7 +42,12 @@ through a SetupIntent that the customer's browser confirms with Stripe.js, so no
 using eQuantic.Payment.Models;
 using eQuantic.Payment.Models.Requests;
 
-var customer = await stripe.Customers.CreateAsync(payer);            // CustomerRequest: name, email, CPF/CNPJ, address
+var customer = await stripe.Customers.CreateAsync(new CustomerRequest
+{
+    Name = name, Email = email, Document = cpfOrCnpj, Address = address,
+    IdempotencyKey = $"{accountId}:customer",
+    Metadata = new Dictionary<string, string> { ["account_id"] = accountId },
+});
 var setup = await stripe.PaymentMethods.SetupAsync(new PaymentMethodSetupRequest
 {
     CustomerId = customer.Data!.Id,
@@ -68,7 +73,10 @@ exception: `Success` is false, `Error.Code` is the decline code (`insufficient_f
 `authentication_required`…) and `Data` is still the charge, its id and its `Failed` status. After
 `authentication_required`, the customer has to come back to pay. `PaymentMethods.ListAsync` lists a
 customer's saved cards (brand, last four digits, expiry) and `DetachAsync` removes one;
-`Customers.UpdateAsync` keeps the customer in step with yours.
+`Customers.UpdateAsync` keeps the customer in step with yours. A customer is created under its
+`IdempotencyKey`, so a retried create answers with the customer the first try made (a key reused with
+other parameters is refused), and keeps its `Metadata` (your id for it, for one) beside the `document`
+entry this package writes.
 
 A Brazilian Stripe account takes Visa and Mastercard credit cards and foreign debit cards: no Elo,
 Hipercard, Amex, Brazilian debit or installments.
