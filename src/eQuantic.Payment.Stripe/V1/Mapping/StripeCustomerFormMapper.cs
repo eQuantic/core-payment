@@ -46,4 +46,32 @@ public sealed class StripeCustomerFormMapper : IMapper<CustomerRequest, StripeFo
     }
 
     public StripeForm? Map(CustomerRequest? source, StripeForm? destination) => Map(source);
+
+    /// <summary>
+    /// What an update sends besides <see cref="Map(CustomerRequest?)"/>'s fields. Stripe keeps a field an update leaves
+    /// out, so the optional ones <paramref name="request"/> does not carry (phone, address, the address's second line,
+    /// the document) go empty, which clears them, and the customer ends up as the request says. Metadata entries of
+    /// yours that the request no longer carries stay.
+    /// </summary>
+    internal static void ClearOmitted(StripeForm form, CustomerRequest request)
+    {
+        if (request.Phone is null)
+        {
+            form.Add("phone", string.Empty);
+        }
+
+        if (request.Address is null)
+        {
+            form.Add("address", string.Empty);
+        }
+        else if (request.Address.Line2 is null)
+        {
+            form.Add("address[line2]", string.Empty);
+        }
+
+        if (request.DocumentDigits is null && request.Metadata?.ContainsKey("document") != true)
+        {
+            form.Add("metadata[document]", string.Empty);
+        }
+    }
 }

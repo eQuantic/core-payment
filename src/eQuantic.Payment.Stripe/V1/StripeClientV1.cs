@@ -71,10 +71,21 @@ public class StripeClientV1(HttpClient httpClient) : PaymentHttpClientBase(httpC
     public Task<ApiResult<StripeSetupIntent>> GetSetupIntentAsync(string id, CancellationToken cancellationToken = default)
         => SendFormAsync<StripeSetupIntent>(HttpMethod.Get, $"setup_intents/{Uri.EscapeDataString(id)}", form: null, cancellationToken);
 
-    /// <summary>A customer's saved payment methods of one type (<c>GET /v1/customers/{id}/payment_methods</c>), up to 100.</summary>
-    public Task<ApiResult<StripeList<StripePaymentMethod>>> ListCustomerPaymentMethodsAsync(string customerId, string type, CancellationToken cancellationToken = default)
-        => SendFormAsync<StripeList<StripePaymentMethod>>(
-            HttpMethod.Get, $"customers/{Uri.EscapeDataString(customerId)}/payment_methods?type={Uri.EscapeDataString(type)}&limit=100", form: null, cancellationToken);
+    /// <summary>
+    /// A page of up to 100 of a customer's saved payment methods of one type
+    /// (<c>GET /v1/customers/{id}/payment_methods</c>), after <paramref name="startingAfter"/> when one is given.
+    /// </summary>
+    public Task<ApiResult<StripeList<StripePaymentMethod>>> ListCustomerPaymentMethodsAsync(
+        string customerId, string type, string? startingAfter = null, CancellationToken cancellationToken = default)
+    {
+        var path = $"customers/{Uri.EscapeDataString(customerId)}/payment_methods?type={Uri.EscapeDataString(type)}&limit=100";
+        if (startingAfter is not null)
+        {
+            path += $"&starting_after={Uri.EscapeDataString(startingAfter)}";
+        }
+
+        return SendFormAsync<StripeList<StripePaymentMethod>>(HttpMethod.Get, path, form: null, cancellationToken);
+    }
 
     /// <summary>Detaches a payment method from its customer (<c>POST /v1/payment_methods/{id}/detach</c>).</summary>
     public Task<ApiResult<StripePaymentMethod>> DetachPaymentMethodAsync(string id, CancellationToken cancellationToken = default)

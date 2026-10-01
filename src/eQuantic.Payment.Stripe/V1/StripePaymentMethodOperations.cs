@@ -28,17 +28,36 @@ internal sealed class StripePaymentMethodOperations(StripeClientV1 client, Provi
         return MapSetup(result);
     }
 
+    /// <summary>
+    /// Every card saved for the customer, page after page. The raw response is the page's body, or a JSON array of
+    /// the pages' bodies when there was more than one.
+    /// </summary>
     public async Task<PaymentResponse<IReadOnlyList<SavedPaymentMethod>>> ListAsync(string customerId, CancellationToken cancellationToken = default)
     {
-        var result = await client.ListCustomerPaymentMethodsAsync(customerId, "card", cancellationToken).ConfigureAwait(false);
-        if (!result.IsSuccess || result.Data is null)
+        var mapper = mappers.GetMapper<StripePaymentMethod, SavedPaymentMethod>();
+        var saved = new List<SavedPaymentMethod>();
+        var pages = new List<string?>();
+        string? startingAfter = null;
+        while (true)
         {
-            return PaymentResponse<IReadOnlyList<SavedPaymentMethod>>.Fail(info, StripeErrorMapper.ToError(result), result.RawBody);
+            var result = await client.ListCustomerPaymentMethodsAsync(customerId, "card", startingAfter, cancellationToken).ConfigureAwait(false);
+            if (!result.IsSuccess || result.Data is null)
+            {
+                return PaymentResponse<IReadOnlyList<SavedPaymentMethod>>.Fail(info, StripeErrorMapper.ToError(result), result.RawBody);
+            }
+
+            pages.Add(result.RawBody);
+            saved.AddRange(result.Data.Data.Select(method => mapper.Map(method)!));
+            if (!result.Data.HasMore || result.Data.Data.Count == 0)
+            {
+                break;
+            }
+
+            startingAfter = result.Data.Data[^1].Id;
         }
 
-        var mapper = mappers.GetMapper<StripePaymentMethod, SavedPaymentMethod>();
-        IReadOnlyList<SavedPaymentMethod> saved = [.. result.Data.Data.Select(method => mapper.Map(method)!)];
-        return PaymentResponse<IReadOnlyList<SavedPaymentMethod>>.Ok(info, saved, result.RawBody);
+        var raw = pages.Count == 1 ? pages[0] : $"[{string.Join(",", pages.Select(page => page ?? "null"))}]";
+        return PaymentResponse<IReadOnlyList<SavedPaymentMethod>>.Ok(info, saved, raw);
     }
 
     public async Task<PaymentResponse<SavedPaymentMethod>> DetachAsync(string paymentMethodId, CancellationToken cancellationToken = default)
@@ -58,9 +77,11 @@ internal sealed class StripePaymentMethodOperations(StripeClientV1 client, Provi
         {
             var error = StripeErrorMapper.Parse(result);
             var setup = error?.SetupIntent is { } intent ? mappers.GetMapper<StripeSetupIntent, PaymentMethodSetup>().Map(intent) : null;
-            return PaymentResponse<PaymentMethodSetup>.Fail(info, StripeErrorMapper.ToError(error, result.StatusCode), setup, result.RawBody);
+            return PaymentResponse<PaymentMethodSetup>.Fail(
+                info, StripeErrorMapper.ToError(error, result.StatusCode), setup, StripeRawBody.WithoutClientSecrets(result.RawBody));
         }
 
-        return PaymentResponse<PaymentMethodSetup>.Ok(info, mappers.GetMapper<StripeSetupIntent, PaymentMethodSetup>().Map(result.Data)!, result.RawBody);
+        return PaymentResponse<PaymentMethodSetup>.Ok(
+            info, mappers.GetMapper<StripeSetupIntent, PaymentMethodSetup>().Map(result.Data)!, StripeRawBody.WithoutClientSecrets(result.RawBody));
     }
 }

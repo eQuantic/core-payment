@@ -101,8 +101,19 @@ public class StripeBoletoTests
         var noPayer = await provider.Charges.CreateAsync(Boleto(null));
         var noDocument = await provider.Charges.CreateAsync(Boleto(new CustomerRequest { Name = payer.Name, Email = payer.Email, Address = payer.Address }));
         var noAddress = await provider.Charges.CreateAsync(Boleto(new CustomerRequest { Name = payer.Name, Email = payer.Email, Document = payer.Document }));
+        var blankName = await provider.Charges.CreateAsync(Boleto(new CustomerRequest
+        {
+            Name = "  ", Email = payer.Email, Document = payer.Document, Address = payer.Address,
+        }));
+        var noCountry = await provider.Charges.CreateAsync(Boleto(new CustomerRequest
+        {
+            Name = payer.Name,
+            Email = payer.Email,
+            Document = payer.Document,
+            Address = new AddressRequest { Line1 = "Rua Álvares Cabral, nº 10", City = "São Paulo", State = "SP", ZipCode = "01310-000", Country = " " },
+        }));
 
-        Assert.All([noPayer, noDocument, noAddress], response => Assert.Equal("boleto_payer_incomplete", response.Error!.Code));
+        Assert.All([noPayer, noDocument, noAddress, blankName, noCountry], response => Assert.Equal("boleto_payer_incomplete", response.Error!.Code));
         Assert.Empty(handler.Requests);
     }
 

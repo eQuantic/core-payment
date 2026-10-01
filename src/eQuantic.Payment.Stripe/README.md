@@ -71,9 +71,13 @@ var renewal = await stripe.Charges.CreateAsync(new CreateChargeRequest
 A card Stripe declines, or one that asks for authentication with the customer away, is an outcome, not an
 exception: `Success` is false, `Error.Code` is the decline code (`insufficient_funds`, `generic_decline`,
 `authentication_required`…) and `Data` is still the charge, its id and its `Failed` status. After
-`authentication_required`, the customer has to come back to pay. `PaymentMethods.ListAsync` lists a
-customer's saved cards (brand, last four digits, expiry) and `DetachAsync` removes one;
-`Customers.UpdateAsync` keeps the customer in step with yours. A customer is created under its
+`authentication_required`, the customer has to come back to pay. `PaymentMethods.ListAsync` lists every
+one of a customer's saved cards (brand, last four digits, expiry), page after page, and `DetachAsync`
+removes one. A setup's client secret comes back in `ClientSecret` only: the `RawResponse` kept for
+auditing has it redacted.
+
+`Customers.UpdateAsync` keeps the customer in step with yours: what the request leaves out (a phone, an
+address or its second line, a document) is cleared at Stripe too. A customer is created under its
 `IdempotencyKey`, so a retried create answers with the customer the first try made (a key reused with
 other parameters is refused), and keeps its `Metadata` (your id for it, for one) beside the `document`
 entry this package writes.

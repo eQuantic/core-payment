@@ -31,9 +31,9 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
     private static PaymentError? Refuse(CreateChargeRequest request)
     {
         if (request.OffSession
-            && (request.CustomerId is null
+            && (string.IsNullOrWhiteSpace(request.CustomerId)
                 || request.Method is not (PaymentMethodType.CreditCard or PaymentMethodType.DebitCard)
-                || StripePaymentIntentFormMapper.SavedPaymentMethod(request.Card) is null))
+                || string.IsNullOrWhiteSpace(StripePaymentIntentFormMapper.SavedPaymentMethod(request.Card))))
         {
             return new PaymentError
             {
@@ -42,14 +42,7 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
             };
         }
 
-        if (request.Method == PaymentMethodType.Boleto
-            && request.Customer is not
-            {
-                Name.Length: > 0,
-                Email.Length: > 0,
-                DocumentType: not null,
-                Address: { Line1.Length: > 0, City.Length: > 0, State.Length: > 0, ZipCode.Length: > 0 },
-            })
+        if (request.Method == PaymentMethodType.Boleto && !IsWholePayer(request.Customer))
         {
             return new PaymentError
             {
@@ -60,6 +53,17 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
 
         return null;
     }
+
+    /// <summary>A boleto's payer: name, email, CPF or CNPJ and full address, none of them blank.</summary>
+    private static bool IsWholePayer(CustomerRequest? payer) =>
+        payer is { DocumentType: not null, Address: { } address }
+        && !string.IsNullOrWhiteSpace(payer.Name)
+        && !string.IsNullOrWhiteSpace(payer.Email)
+        && !string.IsNullOrWhiteSpace(address.Line1)
+        && !string.IsNullOrWhiteSpace(address.City)
+        && !string.IsNullOrWhiteSpace(address.State)
+        && !string.IsNullOrWhiteSpace(address.ZipCode)
+        && !string.IsNullOrWhiteSpace(address.Country);
 
     public async Task<PaymentResponse<Charge>> GetAsync(string chargeId, CancellationToken cancellationToken = default)
     {
@@ -128,6 +132,7 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
     async Task<PaymentResponse<Customer>> ICustomerOperations.UpdateAsync(string customerId, CustomerRequest request, CancellationToken cancellationToken)
     {
         var form = mappers.GetMapper<CustomerRequest, StripeForm>().Map(request)!;
+        StripeCustomerFormMapper.ClearOmitted(form, request);
         var result = await client.UpdateCustomerAsync(customerId, form, cancellationToken).ConfigureAwait(false);
         return MapCustomer(result);
     }

@@ -85,6 +85,35 @@ public class StripeSavedCardTests
     }
 
     [Fact]
+    public async Task A_customer_update_clears_what_the_request_no_longer_carries()
+    {
+        var (provider, handler) = CreateProvider();
+        const string Customer = """{ "id": "cus_123", "object": "customer", "name": "Maria Souza", "email": "maria@example.com" }""";
+        handler.EnqueueJson(HttpStatusCode.OK, Customer);
+        handler.EnqueueJson(HttpStatusCode.OK, Customer);
+
+        await provider.Customers.UpdateAsync("cus_123", new CustomerRequest { Name = "Maria Souza", Email = "maria@example.com" });
+        await provider.Customers.UpdateAsync("cus_123", new CustomerRequest
+        {
+            Name = "Maria Souza",
+            Email = "maria@example.com",
+            Phone = "+5511999999999",
+            Document = "123.456.789-09",
+            Address = new AddressRequest { Line1 = "Av. Paulista, 1000", City = "São Paulo", State = "SP", ZipCode = "01310-000" },
+        });
+
+        var cleared = handler.RequestBodies[0]!.Split('&');
+        Assert.Contains("phone=", cleared);
+        Assert.Contains("address=", cleared);
+        Assert.Contains("metadata%5Bdocument%5D=", cleared);
+        var replaced = handler.RequestBodies[1]!.Split('&');
+        Assert.Contains("address%5Bline2%5D=", replaced);
+        Assert.DoesNotContain("phone=", replaced);
+        Assert.DoesNotContain("address=", replaced);
+        Assert.DoesNotContain("metadata%5Bdocument%5D=", replaced);
+    }
+
+    [Fact]
     public async Task A_customer_is_created_under_the_callers_key_and_says_whose_it_is()
     {
         var (provider, handler) = CreateProvider();
@@ -164,6 +193,30 @@ public class StripeSavedCardTests
     }
 
     [Fact]
+    public async Task A_setups_client_secret_reaches_the_result_and_never_the_raw_body_kept_for_auditing()
+    {
+        var (provider, handler) = CreateProvider();
+        handler.EnqueueJson(HttpStatusCode.OK, """
+        { "id": "seti_123", "object": "setup_intent", "client_secret": "seti_123_secret_abc", "customer": "cus_123",
+          "status": "requires_payment_method" }
+        """);
+        handler.EnqueueJson(HttpStatusCode.BadRequest, """
+        { "error": { "type": "invalid_request_error", "code": "setup_intent_unexpected_state", "message": "This SetupIntent was canceled.",
+          "setup_intent": { "id": "seti_123", "object": "setup_intent", "client_secret": "seti_123_secret_abc", "status": "canceled" } } }
+        """);
+
+        var created = await provider.PaymentMethods.SetupAsync(new PaymentMethodSetupRequest { CustomerId = "cus_123" });
+        var refused = await provider.PaymentMethods.SetupAsync(new PaymentMethodSetupRequest { CustomerId = "cus_123" });
+
+        Assert.Equal("seti_123_secret_abc", created.Data!.ClientSecret);
+        Assert.DoesNotContain("seti_123_secret_abc", created.RawResponse);
+        Assert.Contains("\"client_secret\":\"[redacted]\"", created.RawResponse);
+        Assert.False(refused.Success);
+        Assert.Equal("seti_123", refused.Data!.Id);
+        Assert.DoesNotContain("seti_123_secret_abc", refused.RawResponse);
+    }
+
+    [Fact]
     public async Task A_setup_that_succeeded_names_the_card_it_saved()
     {
         var (provider, handler) = CreateProvider();
@@ -215,6 +268,28 @@ public class StripeSavedCardTests
         Assert.Null(detached.Data!.CustomerId);
         Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
         Assert.EndsWith("payment_methods/pm_456/detach", handler.RequestPaths[1]);
+    }
+
+    [Fact]
+    public async Task Every_saved_card_is_listed_page_after_page()
+    {
+        var (provider, handler) = CreateProvider();
+        handler.EnqueueJson(HttpStatusCode.OK, """
+        { "object": "list", "has_more": true, "data": [
+          { "id": "pm_1", "object": "payment_method", "type": "card", "customer": "cus_123", "card": { "brand": "visa", "last4": "4242" } } ] }
+        """);
+        handler.EnqueueJson(HttpStatusCode.OK, """
+        { "object": "list", "has_more": false, "data": [
+          { "id": "pm_2", "object": "payment_method", "type": "card", "customer": "cus_123", "card": { "brand": "visa", "last4": "1881" } } ] }
+        """);
+
+        var listed = await provider.PaymentMethods.ListAsync("cus_123");
+
+        Assert.True(listed.Success);
+        Assert.Equal(new[] { "pm_1", "pm_2" }, listed.Data!.Select(card => card.Id));
+        Assert.DoesNotContain("starting_after", handler.RequestPaths[0]);
+        Assert.EndsWith("&starting_after=pm_1", handler.RequestPaths[1]);
+        Assert.StartsWith("[{", listed.RawResponse);
     }
 
     [Fact]
@@ -276,6 +351,7 @@ public class StripeSavedCardTests
         var (provider, handler) = CreateProvider();
 
         var noCard = await provider.Charges.CreateAsync(Renewal(paymentMethodId: null));
+        var blankCard = await provider.Charges.CreateAsync(Renewal(paymentMethodId: " "));
         var noCustomer = await provider.Charges.CreateAsync(new CreateChargeRequest
         {
             Amount = Money.Brl(49.90m),
@@ -283,9 +359,16 @@ public class StripeSavedCardTests
             Card = new CardDetails { PaymentMethodId = "pm_123" },
             OffSession = true,
         });
+        var blankCustomer = await provider.Charges.CreateAsync(new CreateChargeRequest
+        {
+            Amount = Money.Brl(49.90m),
+            Method = PaymentMethodType.CreditCard,
+            CustomerId = " ",
+            Card = new CardDetails { PaymentMethodId = "pm_123" },
+            OffSession = true,
+        });
 
-        Assert.Equal("saved_payment_method_required", noCard.Error!.Code);
-        Assert.Equal("saved_payment_method_required", noCustomer.Error!.Code);
+        Assert.All([noCard, blankCard, noCustomer, blankCustomer], response => Assert.Equal("saved_payment_method_required", response.Error!.Code));
         Assert.Empty(handler.Requests);
     }
 
