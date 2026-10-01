@@ -13,6 +13,13 @@ public sealed class StubHttpMessageHandler : HttpMessageHandler
 
     public List<string> RequestPaths { get; } = [];
 
+    /// <summary>Every request sent, in order.</summary>
+    public List<HttpRequestMessage> Requests { get; } = [];
+
+    /// <summary>The value of header <paramref name="name"/> on the request at <paramref name="index"/>, or null when it was not sent.</summary>
+    public string? Header(int index, string name) =>
+        Requests[index].Headers.TryGetValues(name, out var values) ? values.Single() : null;
+
     public StubHttpMessageHandler EnqueueJson(HttpStatusCode status, string body)
     {
         _responses.Enqueue((status, body));
@@ -22,6 +29,7 @@ public sealed class StubHttpMessageHandler : HttpMessageHandler
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         LastRequest = request;
+        Requests.Add(request);
         RequestPaths.Add(request.RequestUri!.ToString());
         LastRequestBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
 
