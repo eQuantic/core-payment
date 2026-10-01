@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0](https://github.com/eQuantic/core-payment/compare/v1.1.0...v1.2.0) (2026-10-01)
+
+### Features
+
+* the caller's idempotency key on create, capture, cancel and refund ([#8](https://github.com/eQuantic/core-payment/issues/8)) ([ae0d5b5](https://github.com/eQuantic/core-payment/commit/ae0d5b576df50fe35355fd6edad1eaeced3b400f))
+
 ## [1.1.0](https://github.com/eQuantic/core-payment/compare/v1.0.0...v1.1.0) (2026-10-01)
 
 ### Features
