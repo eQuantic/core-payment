@@ -7,10 +7,12 @@
 #            signature with a key that is not there, and after it a commit is the owner's, unsigned;
 #            dotnet answers the pinned SDK in the repository, from the hook's own install; openspec
 #            answers the version the lockfile pins, with telemetry off; the store is cloned beside
-#            the repository and registered; and the person is told nothing, as nothing fell short.
-#   controls an SDK archive whose SHA-256 is not the pinned one is refused, nothing is installed,
-#            and the person is told; a store that cannot be cloned leaves nothing where it would have
-#            gone, and the person is told the command that registers it.
+#            the repository and registered; and the person is told nothing, as nothing fell short
+#            (but Docker, on a runner that has no usable one: the hook starts it, never installs it).
+#   controls a store checkout that cannot take the owner's identity is reported to the person; an
+#            SDK archive whose SHA-256 is not the pinned one is refused, nothing is installed, and the
+#            person is told; a store that cannot be cloned leaves nothing where it would have gone,
+#            and the person is told the command that registers it.
 #   laptop   the identity and the signing are left alone, nothing is cloned or installed but the
 #            pinned OpenSpec CLI, and the person is warned with the commands that set the store up,
 #            until the store is registered.
@@ -124,6 +126,10 @@ field() { # JSON, field: systemMessage or additionalContext
     });' "$2"
 }
 
+# Docker is the one promise a runner can keep from the hook: it is started, never installed. A runner
+# without a usable one may only be told that.
+if env -i "${base_env[@]}" docker info >/dev/null 2>&1; then docker_usable=true; else docker_usable=false; fi
+
 echo "== a fresh cloud container"
 home="$work/home"
 hostile_home "$home"
@@ -140,7 +146,12 @@ if ! message="$(field "$out" systemMessage)"; then
   fail "the hook's stdout is not the SessionStart JSON: $out"
   sed 's/^/    /' "$work/a.env.log"
 else
-  expect_equal "nothing is said to the person" "$message" ""
+  if $docker_usable; then
+    expect_equal "nothing is said to the person" "$message" ""
+  else
+    expect_equal "nothing but Docker is said to the person, on a runner with no usable Docker" \
+      "$(printf '%s\n' "$message" | sed 1d | grep -v '^- Docker: ')" ""
+  fi
   [ -z "$message" ] || sed 's/^/    /' "$work/a.env.log"
 fi
 if in_session "$home" "$work/a.env" "git -C '$work/a/repo' commit -q -m 'after the hook'" >/dev/null 2>&1; then
@@ -158,6 +169,13 @@ expect_equal "OpenSpec telemetry is off" "$(in_session "$home" "$work/a.env" 'pr
 if [ -d "$work/a/equantic-specs/.git" ]; then ok "the store is cloned beside the repository"; else fail "the store was not cloned beside the repository"; fi
 expect_contains "the store is registered there" \
   "$(in_session "$home" "$work/a.env" 'openspec store list --json')" "\"root\": \"$work/a/equantic-specs\""
+
+echo "== a registered store whose checkout cannot take the identity"
+mv "$work/a/equantic-specs/.git" "$work/a/store-git-moved-away"
+out="$(run_hook "$work/a/repo" "$home" cloud "$work/a2.env")"
+expect_contains "the person is told the store's checkout was left as it was" "$(field "$out" systemMessage)" \
+  "with signing off in the store's checkout, $work/a/equantic-specs"
+mv "$work/a/store-git-moved-away" "$work/a/equantic-specs/.git"
 
 echo "== an SDK archive that is not the pinned one"
 tar -czf "$work/not-the-sdk.tar.gz" -C "$store_src" .openspec-store

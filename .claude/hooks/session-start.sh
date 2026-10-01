@@ -44,6 +44,11 @@ warnings=()
 note() { notes+=("$1"); echo "session-start: $1"; }
 warn() { warnings+=("$1"); echo "session-start: warning: $1"; }
 
+if [ -n "$env_file" ] && ! : >>"$env_file"; then
+  warn "CLAUDE_ENV_FILE ($env_file) cannot be written, so nothing reaches the session's commands: no PATH, no identity"
+  env_file=''
+fi
+
 # Exports for the session's later commands, through the file Claude Code sources before each one.
 export_var() {
   [ -n "$env_file" ] || return 0
@@ -139,6 +144,15 @@ prepare_openspec() {
   note "OpenSpec CLI $pinned on PATH, from tools/openspec, with telemetry off"
 }
 
+# A session commits proposals and archives in the store's checkout too.
+prepare_store_identity() {
+  if prepare_identity "$1"; then
+    note "git: the store's checkout also commits as $OWNER_NAME <$OWNER_EMAIL>, with signing off"
+  else
+    warn "git: could not commit as $OWNER_NAME <$OWNER_EMAIL> with signing off in the store's checkout, $1; run git config user.name, user.email, commit.gpgsign false and tag.gpgsign false there"
+  fi
+}
+
 registered_store_root() {
   openspec store list --json 2>/dev/null | node -e '
     let text = "";
@@ -157,7 +171,7 @@ prepare_store() {
   dir="$(store_parent)/$STORE_ID"
   root="$(registered_store_root)"
   if [ -n "$root" ] && [ -d "$root" ]; then
-    $remote && prepare_identity "$root" >/dev/null 2>&1
+    $remote && prepare_store_identity "$root"
     note "OpenSpec store: $STORE_ID is registered at $root; pull it before starting (git -C $root pull --rebase)"
     return
   fi
@@ -180,7 +194,7 @@ prepare_store() {
     warn "OpenSpec store: openspec store register $dir failed"
     return
   fi
-  prepare_identity "$dir" >/dev/null 2>&1
+  prepare_store_identity "$dir"
   note "OpenSpec store: $STORE_ID cloned at $dir and registered"
 }
 
@@ -254,7 +268,7 @@ prepare_dotnet() {
 prepare_docker() {
   local pid
   if ! command -v docker >/dev/null 2>&1; then
-    note "Docker: not in this container; nothing in this repository needs it"
+    warn "Docker: not in this container, so it could not be started; the build and the tests do not need it"
     return
   fi
   if docker info >/dev/null 2>&1; then
@@ -262,7 +276,7 @@ prepare_docker() {
     return
   fi
   if ! command -v dockerd >/dev/null 2>&1; then
-    note "Docker: the client is here and no daemon is, so it was not started"
+    warn "Docker: the client is here and no daemon is, so it could not be started; the build and the tests do not need it"
     return
   fi
   # Detached, and with no handle on the hook's stdout, which Claude Code reads to the end.
@@ -276,7 +290,7 @@ prepare_docker() {
     kill -0 "$pid" 2>/dev/null || break
     sleep 1
   done
-  note "Docker: the daemon did not start (${TMPDIR:-/tmp}/dockerd.log); nothing in this repository needs it"
+  warn "Docker: the daemon did not start (${TMPDIR:-/tmp}/dockerd.log); the build and the tests do not need it"
 }
 
 if $remote; then
