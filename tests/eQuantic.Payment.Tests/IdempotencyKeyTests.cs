@@ -128,6 +128,53 @@ public class IdempotencyKeyTests
     }
 
     [Fact]
+    public async Task Calls_written_for_1_x_compile_and_send_what_they_did()
+    {
+        // 1.x code passes the token positionally, `default` included. The overloads that take a key require their
+        // token, so such a call can only be the 1.x overload's, and it sends what 1.x sent: no key to Stripe, a
+        // fresh one where the gateway's API asks for one.
+        var handler = Refusing(19);
+        var stripe = new StripeClientV1(Http(handler, StripeDefaults.BaseUrl));
+        await stripe.CreatePaymentIntentAsync([], default);
+        await stripe.CapturePaymentIntentAsync("pi_1", null, default);
+        await stripe.CancelPaymentIntentAsync("pi_1", default);
+        await stripe.CreateRefundAsync([], default);
+
+        var payments = new MercadoPagoPaymentsClient(Http(handler, MercadoPagoDefaults.BaseUrl));
+        await payments.CreatePaymentAsync(new(), default);
+        await payments.CapturePaymentAsync(1, new(), default);
+        await payments.CancelPaymentAsync(1, default);
+        await payments.CreateRefundAsync(1, new(), default);
+
+        var orders = new MercadoPagoOrdersClient(Http(handler, MercadoPagoDefaults.BaseUrl));
+        await orders.CreateOrderAsync(new(), default);
+        await orders.CaptureOrderAsync("ORD1", default);
+        await orders.CancelOrderAsync("ORD1", default);
+        await orders.RefundOrderAsync("ORD1", new(), default);
+
+        var pagSeguro = new PagSeguroOrdersClient(Http(handler, PagSeguroDefaults.BaseUrl));
+        await pagSeguro.CreateOrderAsync(new(), default);
+        await pagSeguro.CaptureChargeAsync("CHAR_1", null, default);
+        await pagSeguro.CancelChargeAsync("CHAR_1", null, default);
+
+        var adyen = new AdyenClientV71(Http(handler, AdyenDefaults.BaseUrl));
+        await adyen.CreatePaymentAsync(new(), default);
+        await adyen.CaptureAsync("PSP1", new(), default);
+        await adyen.CancelAsync("PSP1", new(), default);
+        await adyen.RefundAsync("PSP1", new(), default);
+
+        Assert.Equal(19, handler.Requests.Count);
+        Assert.All(Enumerable.Range(0, 4), i => Assert.Null(handler.Header(i, "Idempotency-Key")));
+        Assert.True(Guid.TryParse(handler.Header(4, "X-Idempotency-Key"), out _));
+        Assert.Null(handler.Header(5, "X-Idempotency-Key"));
+        Assert.Null(handler.Header(6, "X-Idempotency-Key"));
+        Assert.True(Guid.TryParse(handler.Header(7, "X-Idempotency-Key"), out _));
+        Assert.All(Enumerable.Range(8, 4), i => Assert.True(Guid.TryParse(handler.Header(i, "X-Idempotency-Key"), out _)));
+        Assert.All(Enumerable.Range(12, 3), i => Assert.True(Guid.TryParse(handler.Header(i, "x-idempotency-key"), out _)));
+        Assert.All(Enumerable.Range(15, 4), i => Assert.True(Guid.TryParse(handler.Header(i, "Idempotency-Key"), out _)));
+    }
+
+    [Fact]
     public async Task A_gateway_without_keys_still_captures_and_cancels_through_the_request()
     {
         var handler = Refusing(2);
