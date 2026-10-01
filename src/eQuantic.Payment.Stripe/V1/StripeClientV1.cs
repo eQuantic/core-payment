@@ -26,7 +26,7 @@ public class StripeClientV1(HttpClient httpClient) : PaymentHttpClientBase(httpC
     public Task<ApiResult<StripePaymentIntent>> CreatePaymentIntentAsync(IEnumerable<KeyValuePair<string, string>> form, CancellationToken cancellationToken = default)
         => CreatePaymentIntentAsync(form, idempotencyKey: null, cancellationToken);
 
-    public Task<ApiResult<StripePaymentIntent>> CreatePaymentIntentAsync(IEnumerable<KeyValuePair<string, string>> form, string? idempotencyKey, CancellationToken cancellationToken = default)
+    public Task<ApiResult<StripePaymentIntent>> CreatePaymentIntentAsync(IEnumerable<KeyValuePair<string, string>> form, string? idempotencyKey, CancellationToken cancellationToken)
         => PostFormAsync<StripePaymentIntent>("payment_intents", WithLatestChargeExpand(form), idempotencyKey, cancellationToken);
 
     public Task<ApiResult<StripePaymentIntent>> GetPaymentIntentAsync(string id, CancellationToken cancellationToken = default)
@@ -35,19 +35,19 @@ public class StripeClientV1(HttpClient httpClient) : PaymentHttpClientBase(httpC
     public Task<ApiResult<StripePaymentIntent>> CapturePaymentIntentAsync(string id, IEnumerable<KeyValuePair<string, string>>? form = null, CancellationToken cancellationToken = default)
         => CapturePaymentIntentAsync(id, form, idempotencyKey: null, cancellationToken);
 
-    public Task<ApiResult<StripePaymentIntent>> CapturePaymentIntentAsync(string id, IEnumerable<KeyValuePair<string, string>>? form, string? idempotencyKey, CancellationToken cancellationToken = default)
+    public Task<ApiResult<StripePaymentIntent>> CapturePaymentIntentAsync(string id, IEnumerable<KeyValuePair<string, string>>? form, string? idempotencyKey, CancellationToken cancellationToken)
         => PostFormAsync<StripePaymentIntent>($"payment_intents/{id}/capture", WithLatestChargeExpand(form), idempotencyKey, cancellationToken);
 
     public Task<ApiResult<StripePaymentIntent>> CancelPaymentIntentAsync(string id, CancellationToken cancellationToken = default)
         => CancelPaymentIntentAsync(id, idempotencyKey: null, cancellationToken);
 
-    public Task<ApiResult<StripePaymentIntent>> CancelPaymentIntentAsync(string id, string? idempotencyKey, CancellationToken cancellationToken = default)
+    public Task<ApiResult<StripePaymentIntent>> CancelPaymentIntentAsync(string id, string? idempotencyKey, CancellationToken cancellationToken)
         => PostFormAsync<StripePaymentIntent>($"payment_intents/{id}/cancel", WithLatestChargeExpand(form: null), idempotencyKey, cancellationToken);
 
     public Task<ApiResult<StripeRefund>> CreateRefundAsync(IEnumerable<KeyValuePair<string, string>> form, CancellationToken cancellationToken = default)
         => CreateRefundAsync(form, idempotencyKey: null, cancellationToken);
 
-    public Task<ApiResult<StripeRefund>> CreateRefundAsync(IEnumerable<KeyValuePair<string, string>> form, string? idempotencyKey, CancellationToken cancellationToken = default)
+    public Task<ApiResult<StripeRefund>> CreateRefundAsync(IEnumerable<KeyValuePair<string, string>> form, string? idempotencyKey, CancellationToken cancellationToken)
         => PostFormAsync<StripeRefund>("refunds", form, idempotencyKey, cancellationToken);
 
     public Task<ApiResult<StripeCustomer>> CreateCustomerAsync(IEnumerable<KeyValuePair<string, string>> form, CancellationToken cancellationToken = default)

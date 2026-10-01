@@ -21,7 +21,7 @@ public class AdyenClientV71(HttpClient httpClient) : PaymentHttpClientBase(httpC
         => CreatePaymentAsync(request, idempotencyKey: null, cancellationToken);
 
     /// <inheritdoc cref="CreatePaymentAsync(AdyenPaymentRequest, CancellationToken)"/>
-    public Task<ApiResult<AdyenPaymentResponse>> CreatePaymentAsync(AdyenPaymentRequest request, string? idempotencyKey, CancellationToken cancellationToken = default)
+    public Task<ApiResult<AdyenPaymentResponse>> CreatePaymentAsync(AdyenPaymentRequest request, string? idempotencyKey, CancellationToken cancellationToken)
         => SendIdempotentJsonAsync<AdyenPaymentResponse>(HttpMethod.Post, $"{VersionSegment}/payments", request, idempotencyKey, cancellationToken);
 
     /// <summary>Captures a payment (<c>POST /v71/payments/{pspReference}/captures</c>). Asynchronous; returns a "received" ack.</summary>
@@ -29,7 +29,7 @@ public class AdyenClientV71(HttpClient httpClient) : PaymentHttpClientBase(httpC
         => CaptureAsync(pspReference, request, idempotencyKey: null, cancellationToken);
 
     /// <inheritdoc cref="CaptureAsync(string, AdyenCaptureRequest, CancellationToken)"/>
-    public Task<ApiResult<AdyenModificationResponse>> CaptureAsync(string pspReference, AdyenCaptureRequest request, string? idempotencyKey, CancellationToken cancellationToken = default)
+    public Task<ApiResult<AdyenModificationResponse>> CaptureAsync(string pspReference, AdyenCaptureRequest request, string? idempotencyKey, CancellationToken cancellationToken)
         => SendIdempotentJsonAsync<AdyenModificationResponse>(HttpMethod.Post, $"{VersionSegment}/payments/{pspReference}/captures", request, idempotencyKey, cancellationToken);
 
     /// <summary>Cancels a payment before capture (<c>POST /v71/payments/{pspReference}/cancels</c>). Asynchronous; returns a "received" ack.</summary>
@@ -37,7 +37,7 @@ public class AdyenClientV71(HttpClient httpClient) : PaymentHttpClientBase(httpC
         => CancelAsync(pspReference, request, idempotencyKey: null, cancellationToken);
 
     /// <inheritdoc cref="CancelAsync(string, AdyenCancelRequest, CancellationToken)"/>
-    public Task<ApiResult<AdyenModificationResponse>> CancelAsync(string pspReference, AdyenCancelRequest request, string? idempotencyKey, CancellationToken cancellationToken = default)
+    public Task<ApiResult<AdyenModificationResponse>> CancelAsync(string pspReference, AdyenCancelRequest request, string? idempotencyKey, CancellationToken cancellationToken)
         => SendIdempotentJsonAsync<AdyenModificationResponse>(HttpMethod.Post, $"{VersionSegment}/payments/{pspReference}/cancels", request, idempotencyKey, cancellationToken);
 
     /// <summary>Refunds a captured payment (<c>POST /v71/payments/{pspReference}/refunds</c>). Asynchronous; returns a "received" ack.</summary>
@@ -45,7 +45,7 @@ public class AdyenClientV71(HttpClient httpClient) : PaymentHttpClientBase(httpC
         => RefundAsync(pspReference, request, idempotencyKey: null, cancellationToken);
 
     /// <inheritdoc cref="RefundAsync(string, AdyenRefundRequest, CancellationToken)"/>
-    public Task<ApiResult<AdyenModificationResponse>> RefundAsync(string pspReference, AdyenRefundRequest request, string? idempotencyKey, CancellationToken cancellationToken = default)
+    public Task<ApiResult<AdyenModificationResponse>> RefundAsync(string pspReference, AdyenRefundRequest request, string? idempotencyKey, CancellationToken cancellationToken)
         => SendIdempotentJsonAsync<AdyenModificationResponse>(HttpMethod.Post, $"{VersionSegment}/payments/{pspReference}/refunds", request, idempotencyKey, cancellationToken);
 
     private Task<ApiResult<TResponse>> SendIdempotentJsonAsync<TResponse>(HttpMethod method, string path, object? body, string? idempotencyKey, CancellationToken cancellationToken)

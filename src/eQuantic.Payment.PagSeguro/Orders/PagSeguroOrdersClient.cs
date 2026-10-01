@@ -24,7 +24,7 @@ public class PagSeguroOrdersClient(HttpClient httpClient) : PaymentHttpClientBas
     public Task<ApiResult<PagSeguroOrderResponse>> CreateOrderAsync(PagSeguroOrderRequest request, CancellationToken cancellationToken = default)
         => CreateOrderAsync(request, idempotencyKey: null, cancellationToken);
 
-    public Task<ApiResult<PagSeguroOrderResponse>> CreateOrderAsync(PagSeguroOrderRequest request, string? idempotencyKey, CancellationToken cancellationToken = default)
+    public Task<ApiResult<PagSeguroOrderResponse>> CreateOrderAsync(PagSeguroOrderRequest request, string? idempotencyKey, CancellationToken cancellationToken)
         => SendIdempotentJsonAsync<PagSeguroOrderResponse>(HttpMethod.Post, "orders", request, idempotencyKey, cancellationToken);
 
     public Task<ApiResult<PagSeguroOrderResponse>> GetOrderAsync(string orderId, CancellationToken cancellationToken = default)
@@ -36,7 +36,7 @@ public class PagSeguroOrdersClient(HttpClient httpClient) : PaymentHttpClientBas
     public Task<ApiResult<PagSeguroChargeResponse>> CaptureChargeAsync(string chargeId, long? amount, CancellationToken cancellationToken = default)
         => CaptureChargeAsync(chargeId, amount, idempotencyKey: null, cancellationToken);
 
-    public Task<ApiResult<PagSeguroChargeResponse>> CaptureChargeAsync(string chargeId, long? amount, string? idempotencyKey, CancellationToken cancellationToken = default)
+    public Task<ApiResult<PagSeguroChargeResponse>> CaptureChargeAsync(string chargeId, long? amount, string? idempotencyKey, CancellationToken cancellationToken)
         => SendIdempotentJsonAsync<PagSeguroChargeResponse>(HttpMethod.Post, $"charges/{chargeId}/capture", AmountBody(amount), idempotencyKey, cancellationToken);
 
     /// <summary>Cancels a pre-auth or refunds a captured charge (same endpoint; pass <paramref name="amount"/> for partial).</summary>
@@ -44,7 +44,7 @@ public class PagSeguroOrdersClient(HttpClient httpClient) : PaymentHttpClientBas
         => CancelChargeAsync(chargeId, amount, idempotencyKey: null, cancellationToken);
 
     /// <inheritdoc cref="CancelChargeAsync(string, long?, CancellationToken)"/>
-    public Task<ApiResult<PagSeguroChargeResponse>> CancelChargeAsync(string chargeId, long? amount, string? idempotencyKey, CancellationToken cancellationToken = default)
+    public Task<ApiResult<PagSeguroChargeResponse>> CancelChargeAsync(string chargeId, long? amount, string? idempotencyKey, CancellationToken cancellationToken)
         => SendIdempotentJsonAsync<PagSeguroChargeResponse>(HttpMethod.Post, $"charges/{chargeId}/cancel", AmountBody(amount), idempotencyKey, cancellationToken);
 
     private static PagSeguroAmountEnvelope? AmountBody(long? amount) =>
