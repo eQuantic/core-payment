@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0](https://github.com/eQuantic/core-payment/compare/v1.2.0...v1.3.0) (2026-10-01)
+
+### Features
+
+* saved cards charged with the customer away, and boleto, on Stripe ([#9](https://github.com/eQuantic/core-payment/issues/9)) ([a0b3e61](https://github.com/eQuantic/core-payment/commit/a0b3e61a2c47669fa4cb835242927afa7dad4879)), closes [eQuantic/equantic-subscription-api#118](https://github.com/eQuantic/equantic-subscription-api/issues/118) [eQuantic/equantic-subscription-api#133](https://github.com/eQuantic/equantic-subscription-api/issues/133) [eQuantic/equantic-subscription-api#119](https://github.com/eQuantic/equantic-subscription-api/issues/119)
+
 ## [1.2.0](https://github.com/eQuantic/core-payment/compare/v1.1.0...v1.2.0) (2026-10-01)
 
 ### Features
