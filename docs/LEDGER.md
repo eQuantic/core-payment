@@ -11,3 +11,4 @@ release holds is in [`CHANGELOG.md`](../CHANGELOG.md).
 - 2026-10-01 · The caller's idempotency key on create, capture, cancel and refund, released as 1.2.0 (#8, eQuantic/equantic-subscription-api#60)
 - 2026-10-01 · Saved cards charged with the customer away, customers kept in step, and boleto, on Stripe, released as 1.3.0 (#9, eQuantic/equantic-subscription-api#133; part of eQuantic/equantic-subscription-api#118 and eQuantic/equantic-subscription-api#119)
 - 2026-10-01 · The working agreement lives in the repository: the Workflow section of `CLAUDE.md` and `AGENTS.md`, the session-start hook, and planning in the central OpenSpec store, eQuantic/equantic-specs (#10)
+- 2026-11-01 · Stripe's API version `2026-09-30.endive` can be pinned: PaymentIntents and SetupIntents name their payment method types in `allowed_payment_method_types` there, checked against stripe-mock's schema and in Stripe's test mode (eQuantic/equantic-billing#139)

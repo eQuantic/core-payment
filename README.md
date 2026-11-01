@@ -109,7 +109,7 @@ Each provider version has its own **typed client** (speaking that version's nati
 | Provider | Version axis | How versions differ |
 |----------|--------------|---------------------|
 | **Pagar.me** | `V4` / `V5` (enum) | Different URLs and resources: v4 is *transaction-based* (`/transactions`, auth via `api_key` in the body); v5 is *order/charge-based* (`/orders` + `/charges`, Basic auth with a secret key). |
-| **Stripe** | dated `Stripe-Version` (`2024-06-20`, `2025-04-30.basil`) | Same REST `v1`, but the version pinned in the header changes the response shape. Sent as form-urlencoded, Bearer auth. |
+| **Stripe** | dated `Stripe-Version` (`2024-06-20`, `2025-04-30.basil`, `2026-09-30.endive`) | Same REST `v1`, but the version pinned in the header changes the response shape, and at Endive the field an intent names its payment method types in. Sent as form-urlencoded, Bearer auth. |
 | **Mercado Pago** | `Payments` / `Orders` (enum) | Two parallel APIs: `Payments` (`/v1/payments`) is flat with numeric ids and **decimal** amounts; `Orders` (`/v1/orders`) is the newer unified model with string ids, **string** amounts and a different status vocabulary. Bearer auth + `X-Idempotency-Key`. |
 | **PagSeguro / PagBank** | `Orders` (enum) | Modern Orders/Charges API (`/orders` + `/charges`), centavos, Bearer auth. Card/boleto go in `charges[]`, PIX in `qr_codes[]`; refund = cancel with amount. (Legacy XML API is a separate axis, not modeled.) |
 | **Cielo** | `3.0` (enum `V3`) | E-commerce API 3.0, **PascalCase** JSON, centavos, dual-header auth (`MerchantId`/`MerchantKey`), **two hosts** (transactional for POST/PUT, query for GET). Numeric status codes. |
@@ -249,6 +249,10 @@ They all return `PaymentResponse<T>` with `Provider`, `Success`, `Data`, `Error`
 dotnet build          # net10.0, nullable + warnings-as-errors
 dotnet test           # the providers, the mappers, the factory, the value objects, the Workflow guard
 ```
+
+`dotnet test` needs Docker: the Stripe provider's requests are checked against Stripe's schema in a
+stripe-mock container. With `STRIPE_SECRET_KEY` set to a test-mode key (`sk_test_…`), the same requests also
+go to Stripe's test mode; without one, those tests are skipped.
 
 ## Contributing
 

@@ -7,7 +7,8 @@ namespace eQuantic.Payment.Stripe.V1.Mapping;
 
 /// <summary>
 /// Maps a unified <see cref="CreateChargeRequest"/> to the Stripe <c>POST /v1/payment_intents</c> form body.
-/// Uses <see cref="StripeRequestContext.Today"/> to compute the boleto <c>expires_after_days</c>.
+/// Uses <see cref="StripeRequestContext.Today"/> to compute the boleto <c>expires_after_days</c>, and
+/// <see cref="StripeRequestContext.Version"/> to name the payment method types field.
 /// </summary>
 public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest, StripeForm, StripeRequestContext>
 {
@@ -32,7 +33,7 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
         };
 
         var method = ToPaymentMethodType(source.Method);
-        form.Add("payment_method_types[]", method);
+        form.Add(StripeDefaults.PaymentMethodTypesField(Context?.Version ?? StripeDefaults.Version), method);
 
         if (source.CustomerId is { } customerId)
         {

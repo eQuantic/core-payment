@@ -32,6 +32,13 @@ the default, and every response names the version that answered.
 |---|---|
 | `StripeApiVersion.V2024_06_20` | the `Stripe-Version` header `2024-06-20` |
 | `StripeApiVersion.V2025_04_30_Basil` (default) | the `Stripe-Version` header `2025-04-30.basil` |
+| `StripeApiVersion.V2026_09_30_Endive` | the `Stripe-Version` header `2026-09-30.endive` |
+
+At Endive, a PaymentIntent or a SetupIntent no longer takes `payment_method_types` (Stripe answers 400,
+`payment_method_types_no_longer_supported`), so the provider names the one type each request is for in
+`allowed_payment_method_types` there, and in `payment_method_types` at the versions before it, which do not
+know the new field. Nothing else in a request changes with the version. The events Stripe sends follow the
+version of the webhook endpoint, set in Stripe's Dashboard, not this one: move both together.
 
 ## Saved cards, charged with the customer away
 

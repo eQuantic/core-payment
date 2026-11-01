@@ -6,10 +6,13 @@ namespace eQuantic.Payment.Stripe.V1.Mapping;
 
 /// <summary>
 /// Maps a unified <see cref="PaymentMethodSetupRequest"/> to the Stripe <c>POST /v1/setup_intents</c> form body:
-/// a card, saved for the customer to be charged with the customer away (<c>usage=off_session</c>).
+/// a card, saved for the customer to be charged with the customer away (<c>usage=off_session</c>). Uses
+/// <see cref="StripeRequestContext.Version"/> to name the payment method types field.
 /// </summary>
-public sealed class StripeSetupIntentFormMapper : IMapper<PaymentMethodSetupRequest, StripeForm>
+public sealed class StripeSetupIntentFormMapper : IMapper<PaymentMethodSetupRequest, StripeForm, StripeRequestContext>
 {
+    public StripeRequestContext? Context { get; set; }
+
     public StripeForm? Map(PaymentMethodSetupRequest? source)
     {
         if (source is null)
@@ -20,7 +23,7 @@ public sealed class StripeSetupIntentFormMapper : IMapper<PaymentMethodSetupRequ
         var form = new StripeForm
         {
             { "customer", source.CustomerId },
-            { "payment_method_types[]", "card" },
+            { StripeDefaults.PaymentMethodTypesField(Context?.Version ?? StripeDefaults.Version), "card" },
             { "usage", "off_session" },
         };
 

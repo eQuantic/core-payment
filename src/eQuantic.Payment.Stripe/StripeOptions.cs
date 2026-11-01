@@ -11,6 +11,12 @@ public enum StripeApiVersion
 
     /// <summary>Pins <c>Stripe-Version: 2025-04-30.basil</c> (the "Basil" release).</summary>
     V2025_04_30_Basil,
+
+    /// <summary>
+    /// Pins <c>Stripe-Version: 2026-09-30.endive</c> (the "Endive" release), where a PaymentIntent or a SetupIntent
+    /// names the payment method types it accepts in <c>allowed_payment_method_types</c>.
+    /// </summary>
+    V2026_09_30_Endive,
 }
 
 public sealed class StripeOptions
@@ -19,7 +25,7 @@ public sealed class StripeOptions
     public required string ApiKey { get; set; }
 
     /// <summary>Dated API version pinned via the <c>Stripe-Version</c> header.</summary>
-    public StripeApiVersion Version { get; set; } = StripeApiVersion.V2025_04_30_Basil;
+    public StripeApiVersion Version { get; set; } = StripeDefaults.Version;
 
     /// <summary>Override the base URL (proxy/mock). Defaults to <c>https://api.stripe.com/v1/</c>.</summary>
     public string? BaseUrl { get; set; }
