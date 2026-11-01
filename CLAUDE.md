@@ -15,6 +15,11 @@ dotnet test           # the providers against stubbed HTTP, the mappers, the fac
 dotnet pack -o artifacts
 ```
 
+`dotnet test` needs Docker: the Stripe provider's requests are checked against Stripe's schema in a
+stripe-mock container (`StripeEndiveSchemaTests`). With `STRIPE_SECRET_KEY` set to a test-mode key
+(`sk_test_…`, never a live one, which the tests refuse), `StripeTestModeTests` send them to Stripe's test mode
+too; without it they are skipped.
+
 The SDK is one that `global.json` accepts (10.0.100 or a later 10.0 feature band); in a cloud
 container the session-start hook installs it. CI (`.github/workflows/ci.yml`) builds, tests and packs
 every pull request and every push to `main`, and a merge to `main` is a release
