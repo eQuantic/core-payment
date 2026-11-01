@@ -23,6 +23,16 @@ public sealed class StubHttpMessageHandler : HttpMessageHandler
     public string? Header(int index, string name) =>
         Requests[index].Headers.TryGetValues(name, out var values) ? values.Single() : null;
 
+    /// <summary>The form fields of the request at <paramref name="index"/>, decoded, in the order they were sent.</summary>
+    public IReadOnlyList<KeyValuePair<string, string>> Form(int index) =>
+        (RequestBodies[index] ?? string.Empty)
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(pair => pair.Split('=', 2))
+            .Select(parts => KeyValuePair.Create(Decode(parts[0]), parts.Length > 1 ? Decode(parts[1]) : string.Empty))
+            .ToList();
+
+    private static string Decode(string value) => Uri.UnescapeDataString(value.Replace('+', ' '));
+
     public StubHttpMessageHandler EnqueueJson(HttpStatusCode status, string body)
     {
         _responses.Enqueue((status, body));

@@ -4,6 +4,7 @@ using eQuantic.Payment.Http;
 using eQuantic.Payment.Models;
 using eQuantic.Payment.Models.Requests;
 using eQuantic.Payment.Models.Results;
+using eQuantic.Payment.Stripe.V1.Mapping;
 using eQuantic.Payment.Stripe.V1.Models;
 
 namespace eQuantic.Payment.Stripe.V1;
@@ -12,12 +13,13 @@ namespace eQuantic.Payment.Stripe.V1;
 /// Cards saved for a customer through a SetupIntent, which a front end confirms with Stripe.js, so no card number
 /// reaches the caller; listed and detached through the customer's PaymentMethods.
 /// </summary>
-internal sealed class StripePaymentMethodOperations(StripeClientV1 client, ProviderInfo info, IMapperFactory mappers)
+internal sealed class StripePaymentMethodOperations(StripeClientV1 client, ProviderInfo info, StripeApiVersion version, IMapperFactory mappers)
     : IPaymentMethodOperations
 {
     public async Task<PaymentResponse<PaymentMethodSetup>> SetupAsync(PaymentMethodSetupRequest request, CancellationToken cancellationToken = default)
     {
-        var form = mappers.GetMapper<PaymentMethodSetupRequest, StripeForm>().Map(request)!;
+        var context = new StripeRequestContext { Version = version };
+        var form = mappers.GetMapper<PaymentMethodSetupRequest, StripeForm, StripeRequestContext>(context).Map(request)!;
         var result = await client.CreateSetupIntentAsync(form, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapSetup(result);
     }

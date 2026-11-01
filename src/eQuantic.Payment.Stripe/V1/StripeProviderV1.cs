@@ -26,12 +26,12 @@ public sealed class StripeProviderV1 : IPaymentProvider
         TimeProvider clock)
     {
         Info = new ProviderInfo(StripeDefaults.ProviderName, StripeDefaults.VersionString(version));
-        var operations = new StripeV1Operations(client, Info, mappers, clock);
+        var operations = new StripeV1Operations(client, Info, version, mappers, clock);
         Charges = operations;
         Refunds = operations;
         Customers = operations;
         Notifications = new StripeNotificationOperations(Info, webhookSecret, webhookTolerance, clock);
-        PaymentMethods = new StripePaymentMethodOperations(client, Info, mappers);
+        PaymentMethods = new StripePaymentMethodOperations(client, Info, version, mappers);
     }
 
     public ProviderInfo Info { get; }

@@ -10,7 +10,7 @@ using eQuantic.Payment.Stripe.V1.Models;
 namespace eQuantic.Payment.Stripe.V1;
 
 /// <summary>Stripe exposes charges, refunds and customers over one REST client, so one class serves all three.</summary>
-internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo info, IMapperFactory mappers, TimeProvider clock)
+internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo info, StripeApiVersion version, IMapperFactory mappers, TimeProvider clock)
     : IChargeOperations, IRefundOperations, ICustomerOperations
 {
     public async Task<PaymentResponse<Charge>> CreateAsync(CreateChargeRequest request, CancellationToken cancellationToken = default)
@@ -21,7 +21,7 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
         }
 
         // São Paulo's day of the attempt: Stripe counts a boleto's days there, and a retry counts from the first try.
-        var context = new StripeRequestContext { Today = StripeBoleto.Today(request.AttemptedAt ?? clock.GetUtcNow()) };
+        var context = new StripeRequestContext { Version = version, Today = StripeBoleto.Today(request.AttemptedAt ?? clock.GetUtcNow()) };
         var form = mappers.GetMapper<CreateChargeRequest, StripeForm, StripeRequestContext>(context).Map(request)!;
         var result = await client.CreatePaymentIntentAsync(form, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);
