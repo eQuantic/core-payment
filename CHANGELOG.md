@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/eQuantic/core-payment/compare/v1.3.0...v1.4.0) (2026-11-01)
+
+### Features
+
+* Stripe's API version 2026-09-30.endive can be pinned ([949f863](https://github.com/eQuantic/core-payment/commit/949f863171a73dd1ade95d628eab2c1596333b90))
+* Stripe's API version 2026-09-30.endive can be pinned ([b731d51](https://github.com/eQuantic/core-payment/commit/b731d5196e7076272fe992eae93186d4074be02c))
+
 ## [1.3.0](https://github.com/eQuantic/core-payment/compare/v1.2.0...v1.3.0) (2026-10-01)
 
 ### Features
