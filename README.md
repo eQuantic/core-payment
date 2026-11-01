@@ -51,8 +51,17 @@ A merge is a release. Every push to `main` builds and tests again, then semantic
 messages since the last tag (`.github/workflows/release.yml`, `release.config.mjs`): `✨ feat` is a minor,
 `🐛 fix` and `⚡ perf` a patch, a `!` or a `BREAKING CHANGE` a major, and anything else releases nothing.
 When there is a release, it writes `CHANGELOG.md`, tags `vX.Y.Z`, pushes every package with its symbols to
-nuget.org with the organization's `NUGET_KEY` secret, creates the GitHub release, and commits the version
-back to `Directory.Build.props` with `[skip ci]`. A push to a `preview` branch releases `X.Y.Z-preview.N`.
+nuget.org, creates the GitHub release, and commits the version back to `Directory.Build.props` with
+`[skip ci]`. A push to a `preview` branch releases `X.Y.Z-preview.N`.
+
+nuget.org is reached through [Trusted Publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing),
+with no stored key: the job's GitHub OIDC token is exchanged for a key that lives one hour, under the
+policy on nuget.org for owner `eQuantic`, repository `core-payment`, workflow `release.yml`, environment
+`nuget` and packages `eQuantic.Payment*`. The organization's `NUGET_USER` secret names the nuget.org
+profile that created the policy. The login runs before semantic-release, so a login that fails stops the
+run before anything is tagged. Run by hand with a tag (`gh workflow run release.yml -f tag=vX.Y.Z`), the
+workflow publishes a tag already cut whose packages never reached nuget.org, and creates its GitHub
+release if it has none.
 
 ## Solution layout
 

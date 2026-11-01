@@ -25,7 +25,10 @@ container the session-start hook installs it. CI (`.github/workflows/ci.yml`) bu
 every pull request and every push to `main`, and a merge to `main` is a release
 (`.github/workflows/release.yml`, `release.config.mjs`): semantic-release publishes every package to
 nuget.org at the version the commit messages since the last tag call for, and writes `CHANGELOG.md`
-and the `<Version>` in `Directory.Build.props` back to `main`.
+and the `<Version>` in `Directory.Build.props` back to `main`. It reaches nuget.org through Trusted
+Publishing (a one-hour key for the job's OIDC token, under a policy on nuget.org for this repository,
+`release.yml` and the `nuget` environment), so there is no NuGet key to store or renew. A tag whose
+packages never reached nuget.org is published again with `gh workflow run release.yml -f tag=vX.Y.Z`.
 
 ## Workflow
 
