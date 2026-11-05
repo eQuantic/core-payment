@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.0](https://github.com/eQuantic/core-payment/compare/v1.4.0...v1.5.0) (2026-11-05)
+
+### Features
+
+* MB WAY and Multibanco, in EUR, through Stripe ([2b97d03](https://github.com/eQuantic/core-payment/commit/2b97d033b2de04d7d057e212d292edff08774f31))
+
 ## [1.4.0](https://github.com/eQuantic/core-payment/compare/v1.3.0...v1.4.0) (2026-11-01)
 
 ### Features
