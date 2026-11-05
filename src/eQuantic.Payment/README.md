@@ -49,12 +49,36 @@ if (response.Success)
   (`CreateChargeRequest.OffSession`); `Customers.UpdateAsync` keeps a customer in step. A provider that does
   not do one of these yet answers with a failure.
 - **The unified model**: `CreateChargeRequest`, `CaptureRequest`, `CancelRequest`, `RefundRequest`,
-  `CustomerRequest`; `Charge`, `Customer`, `Refund`, with the Pix, boleto and card details each method
-  returns; `Money` in centavos.
+  `CustomerRequest`; `Charge`, `Customer`, `Refund`, with the Pix, boleto, Multibanco and card details each
+  method returns; `Money` in the currency's smallest unit, BRL unless told otherwise (`Money.Brl`,
+  `Money.Eur`). The methods are card, debit card, Pix and boleto for Brazil, and MB WAY and Multibanco for
+  Portugal, in euros; a provider that does not take a method answers `payment_method_type_unsupported`
+  (`UnsupportedPaymentMethodType`) before sending anything.
+- **Notifications**: a verified `PaymentNotification` names the event and its object, and carries the charge
+  when the object is one (`PaymentNotification.Charge`), so a webhook knows the payment's status, method and
+  reference id without another call.
 - **`PaymentResponse<T>`**: the result or a `PaymentError`, the provider and version that answered, and
   the gateway's raw body for auditing. A failure can still carry what the gateway returned about the object:
   a declined charge comes back with its id and status.
 - **The registration**: `AddPayments(...)` and the `PaymentBuilder` the provider packages extend.
+
+## MB WAY and Multibanco
+
+Portugal's two methods go through the same `Charges.CreateAsync` as any other, in euros. MB WAY takes the
+customer's phone number as they typed it (`MbWayDetails.PhoneNumber`), and every gateway gets it in
+international form (`MbWayDetails.InternationalPhoneNumber`: `912 345 678` is `+351912345678`, and a
+number from elsewhere keeps its country code). Multibanco comes back with the voucher the customer pays
+(`Charge.Multibanco`: `Entity`, `Reference`, `ExpiresAt`, `HostedUrl`). Both settle later, so the charge
+comes back `Pending`, and its status moves through reads and notifications.
+
+```csharp
+var response = await provider.Charges.CreateAsync(new CreateChargeRequest
+{
+    Amount = Money.Eur(25.00m),
+    Method = PaymentMethodType.MbWay,
+    MbWay  = new MbWayDetails { PhoneNumber = "912 345 678" },
+});
+```
 
 ## Retries
 

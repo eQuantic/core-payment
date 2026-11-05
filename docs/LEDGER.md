@@ -13,3 +13,4 @@ release holds is in [`CHANGELOG.md`](../CHANGELOG.md).
 - 2026-10-01 · The working agreement lives in the repository: the Workflow section of `CLAUDE.md` and `AGENTS.md`, the session-start hook, and planning in the central OpenSpec store, eQuantic/equantic-specs (#10)
 - 2026-11-01 · Stripe's API version `2026-09-30.endive` can be pinned: PaymentIntents and SetupIntents name their payment method types in `allowed_payment_method_types` there, checked against stripe-mock's schema and in Stripe's test mode (eQuantic/equantic-billing#139)
 - 2026-11-01 · Releases reach nuget.org through Trusted Publishing, after the organization's long-lived NuGet key expired with 1.4.0 tagged and unpublished, and a tag already cut can be published again by hand (#18)
+- 2026-11-05 · MB WAY and Multibanco, in EUR, through Stripe at every pinned version, refused by every other provider, and a verified notification carries the PaymentIntent it is about as a charge, released as 1.5.0 (#21)

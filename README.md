@@ -1,6 +1,6 @@
 # eQuantic.Payment
 
-Unified payment-gateway abstraction for the Brazilian market, on **.NET 10**.
+Unified payment-gateway abstraction for the Brazilian market, and Portugal's MB WAY and Multibanco through Stripe, on **.NET 10**.
 
 Each gateway has its own client package (`eQuantic.Payment.Pagarme`, `eQuantic.Payment.Stripe`, …), **structured by API version** — because `x.x` behaves one way and `x.y` another. On top of them all, the `eQuantic.Payment` package exposes **a single output**: the same request, the same response, always carrying `provider` + `version`.
 
@@ -74,7 +74,7 @@ src/
 │   ├── Models/                       # Money, PaymentStatus, PaymentMethodType, ProviderInfo,
 │   │   ├── Requests/                 #   CreateChargeRequest, CaptureRequest, CancelRequest, RefundRequest,
 │   │   │                             #   CustomerRequest, AddressRequest, PaymentMethodSetupRequest
-│   │   └── Results/                  #   Charge, Customer, Refund (+ Pix/Boleto/Card outputs),
+│   │   └── Results/                  #   Charge, Customer, Refund (+ Pix/Boleto/Multibanco/Card outputs),
 │   │                                 #   PaymentMethodSetup, SavedPaymentMethod
 │   ├── Http/                         # PaymentHttpClientBase, ApiResult<T>
 │   └── DependencyInjection/          # AddPayments(...), PaymentBuilder, PaymentRegistry, factory
@@ -89,7 +89,7 @@ src/
 │   └── PagarmeServiceCollectionExtensions.cs   # AddPagarme(...)
 │
 ├── eQuantic.Payment.Stripe/          # Stripe client
-│   ├── V1/                           # REST v1 (PaymentIntents) — cards, PIX, boleto
+│   ├── V1/                           # REST v1 (PaymentIntents) — cards, PIX, boleto, MB WAY, Multibanco
 │   │   ├── Models/                   #   faithful wire DTOs (+ expandable converter)
 │   │   └── Mapping/                  #   eQuantic.Mapper IMapper<,> implementations
 │   └── StripeServiceCollectionExtensions.cs    # AddStripe(...)
@@ -128,7 +128,7 @@ Each provider version has its own **typed client** (speaking that version's nati
 
 The version identifier always appears in the output (`response.Provider.Version`) and in the registration key (`pagarme@v5`, `stripe@2025-04-30.basil`, `mercadopago@payments`).
 
-> **Amounts:** the unified `Money` is centavos-based, but each adapter converts to the gateway's format — Pagar.me/Stripe use centavos, **Mercado Pago uses decimal reais** (Payments API) or **decimal strings** (Orders API). **Cards on Mercado Pago** require `Card.Brand` (used as the MP `payment_method_id`, e.g. `visa`/`debvisa`); Pagar.me and Stripe infer the brand from the token/PAN.
+> **Amounts:** the unified `Money` is in the currency's smallest unit (centavos, cents), BRL unless told otherwise (`Money.Brl`, `Money.Eur`), but each adapter converts to the gateway's format — Pagar.me/Stripe use centavos, **Mercado Pago uses decimal reais** (Payments API) or **decimal strings** (Orders API). **Cards on Mercado Pago** require `Card.Brand` (used as the MP `payment_method_id`, e.g. `visa`/`debvisa`); Pagar.me and Stripe infer the brand from the token/PAN.
 
 ## Faithful wire models (Anti-Corruption Layer)
 
@@ -141,6 +141,8 @@ Rules this layer follows (validated against the official docs):
 - The raw body is always preserved in `PaymentResponse.RawResponse` for auditing.
 
 > **Stripe boleto** requires `billing_details` with a full address — that is why `CustomerRequest.Address` is required in that case. Stripe boleto expiry is in days (`expires_after_days`, 0–60), not a timestamp.
+>
+> **Stripe MB WAY and Multibanco** are EUR only (`Money.Eur`), from 0.50 EUR to 5,000 EUR (MB WAY) or 99,999 EUR (Multibanco). MB WAY sends `billing_details[phone]` from `CreateChargeRequest.MbWay.PhoneNumber`, which the core writes in international form for any gateway (`MbWayDetails.InternationalPhoneNumber`); Multibanco sends `billing_details[email]` from `Customer.Email`, and its voucher comes from `next_action.multibanco_display_details`, or from the latest charge's `payment_method_details.multibanco` once paid.
 
 ## Mapping (eQuantic.Mapper)
 
@@ -195,7 +197,7 @@ services.AddPayments(payments => payments
     }));
 ```
 
-> **Partial support is explicit.** Not every gateway exposes every operation. Providers with no standalone customer resource (PagSeguro, Cielo, Adyen, Efí) return a clear "unsupported" error from `Customers.*` (via `UnsupportedCustomerOperations`); Asaas and the others implement it. Each Efí/Mercado Pago version only supports the payment methods its API covers (e.g. `efi@pix` rejects boleto/card). These come back as a failed `PaymentResponse` with an explanatory message, never an exception.
+> **Partial support is explicit.** Not every gateway exposes every operation. Providers with no standalone customer resource (PagSeguro, Cielo, Adyen, Efí) return a clear "unsupported" error from `Customers.*` (via `UnsupportedCustomerOperations`); Asaas and the others implement it. Each Efí/Mercado Pago version only supports the payment methods its API covers (e.g. `efi@pix` rejects boleto/card), and every provider but Stripe refuses MB WAY and Multibanco with `payment_method_type_unsupported` (via `UnsupportedPaymentMethodType`) before sending anything. These come back as a failed `PaymentResponse` with an explanatory message, never an exception.
 >
 > **Efí Pix requires mTLS:** set `EfiOptions.Certificate` (the `.p12` from your Efí account) and `EfiOptions.PixKey`; the handler attaches the client certificate to every Pix call.
 
@@ -236,6 +238,29 @@ public class CheckoutService(IPaymentProviderFactory payments)
 ```
 
 The same code works for **card** (`PaymentMethodType.CreditCard` + `Card`), **boleto** (`PaymentMethodType.Boleto` + `Boleto`) and **PIX**, on any provider/version. Only the `AddPayments` configuration changes.
+
+Portugal's two methods go through the same call, in euros. Stripe takes both; every other provider answers `payment_method_type_unsupported`:
+
+```csharp
+// MB WAY: the customer approves it in the MB WAY app; the charge stays Pending until they do.
+await provider.Charges.CreateAsync(new CreateChargeRequest
+{
+    Amount = Money.Eur(25.00m),
+    Method = PaymentMethodType.MbWay,
+    MbWay  = new MbWayDetails { PhoneNumber = "912 345 678" },   // sent as +351912345678
+    ReferenceId = "order-42",
+});
+
+// Multibanco: the customer pays the voucher at an ATM or in online banking.
+var voucher = (await provider.Charges.CreateAsync(new CreateChargeRequest
+{
+    Amount   = Money.Eur(99.00m),
+    Method   = PaymentMethodType.Multibanco,
+    Customer = new CustomerRequest { Name = "Joana Silva", Email = "joana@example.com" },
+})).Data!.Multibanco!;  // Entity, Reference, ExpiresAt, HostedUrl
+```
+
+Both settle later: a verified notification about the payment carries the charge (`PaymentNotification.Charge`), with its status, method and reference id.
 
 ### Available operations (`IPaymentProvider`)
 

@@ -38,5 +38,6 @@ the default, and every response names the version that answered.
 ## Good to know
 
 - `Sandbox = true` points either API at Efí's homologation hosts.
+- MB WAY and Multibanco, which Efí does not take here, are refused with `payment_method_type_unsupported` before anything is sent: they go through `eQuantic.Payment.Stripe`.
 
 Source and the other providers: [https://github.com/eQuantic/core-payment](https://github.com/eQuantic/core-payment).

@@ -33,5 +33,6 @@ the default, and every response names the version that answered.
 ## Good to know
 
 - A charge creates its customer first, then the payment; the Pix QR code and the boleto's line are fetched right after.
+- MB WAY and Multibanco, which Asaas does not take here, are refused with `payment_method_type_unsupported` before anything is sent: they go through `eQuantic.Payment.Stripe`.
 
 Source and the other providers: [https://github.com/eQuantic/core-payment](https://github.com/eQuantic/core-payment).

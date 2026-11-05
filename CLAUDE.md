@@ -1,6 +1,7 @@
 # eQuantic.Payment
 
-A unified payment-gateway abstraction for the Brazilian market, on .NET 10. The `eQuantic.Payment`
+A unified payment-gateway abstraction for the Brazilian market, and Portugal's MB WAY and Multibanco through
+Stripe, on .NET 10. The `eQuantic.Payment`
 package holds the contracts, the unified model, the factory and the registration; each gateway has
 its own package, structured by API version: Pagar.me, Stripe, Mercado Pago, PagSeguro, Cielo, Adyen,
 Asaas and Efí. The [README](README.md) is the guide to the design (the faithful wire models, the

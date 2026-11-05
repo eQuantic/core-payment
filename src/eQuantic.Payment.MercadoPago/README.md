@@ -36,5 +36,6 @@ the default, and every response names the version that answered.
 
 - Cards need `CardDetails.Brand`, which Mercado Pago takes as the `payment_method_id` (`visa`, `debvisa`…).
 - `X-Idempotency-Key` is the request's `IdempotencyKey`. Without one, the Orders API gets a fresh key on every call, and the Payments API on a create or a refund; a Payments capture or cancel, which updates the payment in place, then carries none.
+- MB WAY and Multibanco, which Mercado Pago does not take here, are refused with `payment_method_type_unsupported` before anything is sent: they go through `eQuantic.Payment.Stripe`.
 
 Source and the other providers: [https://github.com/eQuantic/core-payment](https://github.com/eQuantic/core-payment).
