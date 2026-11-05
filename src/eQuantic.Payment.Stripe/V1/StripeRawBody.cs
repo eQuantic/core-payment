@@ -10,7 +10,7 @@ internal static class StripeRawBody
     private const string Redacted = "[redacted]";
 
     // The body is kept for reading, not for an HTML page: accents, + and the like stay as Stripe wrote them, rather than
-    // the \u escapes the default encoder writes (São Paulo, not São Paulo).
+    // the \u escapes the default encoder writes (São Paulo, not S\u00E3o Paulo).
     private static readonly JsonSerializerOptions AsWritten = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     /// <summary>
