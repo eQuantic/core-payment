@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -7,6 +8,10 @@ namespace eQuantic.Payment.Stripe.V1;
 internal static class StripeRawBody
 {
     private const string Redacted = "[redacted]";
+
+    // The body is kept for reading, not for an HTML page: accents, + and the like stay as Stripe wrote them, rather than
+    // the \u escapes the default encoder writes (São Paulo, not São Paulo).
+    private static readonly JsonSerializerOptions AsWritten = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     /// <summary>
     /// <paramref name="raw"/> with every <c>client_secret</c> replaced, at any depth (an error carries its PaymentIntent
@@ -25,7 +30,7 @@ internal static class StripeRawBody
         {
             var node = JsonNode.Parse(raw);
             Redact(node);
-            return node?.ToJsonString();
+            return node?.ToJsonString(AsWritten);
         }
         catch (JsonException)
         {

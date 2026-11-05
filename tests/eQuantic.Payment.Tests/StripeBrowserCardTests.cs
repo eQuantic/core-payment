@@ -229,6 +229,24 @@ public class StripeBrowserCardTests
         Assert.Contains("\"reference_id\":\"order-44\"", response.RawResponse);
     }
 
+    [Fact]
+    public async Task The_raw_body_keeps_the_rest_as_Stripe_wrote_it_accents_and_plus_signs_included()
+    {
+        var (provider, handler) = CreateProvider();
+        handler.EnqueueJson(HttpStatusCode.OK, """
+        { "id": "pi_boleto", "object": "payment_intent", "status": "requires_action", "amount": 9900, "currency": "brl",
+          "client_secret": "pi_boleto_secret_1", "description": "Pedido nº 44 · São João & Cia <loja>",
+          "payment_method_types": ["boleto"], "metadata": { "phone": "+5511987654321", "note": "it's paid" } }
+        """);
+
+        var response = await provider.Charges.CreateAsync(StripeIntents.Charge(StripeIntents.Boleto, Today));
+
+        Assert.DoesNotContain("pi_boleto_secret_1", response.RawResponse);
+        Assert.Contains("\"description\":\"Pedido nº 44 · São João & Cia <loja>\"", response.RawResponse);
+        Assert.Contains("\"phone\":\"+5511987654321\"", response.RawResponse);
+        Assert.Contains("\"note\":\"it's paid\"", response.RawResponse);
+    }
+
     [Theory]
     [InlineData(StripeIntents.Card)]
     [InlineData(StripeIntents.SavedCard)]
