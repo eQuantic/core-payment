@@ -17,6 +17,11 @@ internal sealed class PagarmeV4Operations(PagarmeClientV4 client, ProviderInfo i
 {
     public async Task<PaymentResponse<Charge>> CreateAsync(CreateChargeRequest request, CancellationToken cancellationToken = default)
     {
+        if (!UnsupportedPaymentMethodType.IsBrazilian(request.Method))
+        {
+            return UnsupportedPaymentMethodType.Refuse(info, request.Method);
+        }
+
         var body = mappers.GetMapper<CreateChargeRequest, V4TransactionRequest>().Map(request)!;
         var result = await client.CreateTransactionAsync(body, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);

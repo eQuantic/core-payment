@@ -27,6 +27,13 @@ public class MoneyTests
     }
 
     [Fact]
+    public void Eur_is_an_amount_in_euros()
+    {
+        Assert.Equal(new Money(1000, "EUR"), Money.Eur(10m));
+        Assert.Equal(50, Money.Eur(0.50m).AmountInCents);
+    }
+
+    [Fact]
     public void Amount_reconstructs_the_decimal()
     {
         Assert.Equal(10.50m, Money.FromCents(1050).Amount);

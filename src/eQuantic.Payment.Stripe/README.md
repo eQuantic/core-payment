@@ -1,6 +1,6 @@
 # eQuantic.Payment.Stripe
 
-Stripe for [eQuantic.Payment](https://github.com/eQuantic/core-payment). A typed client for Stripe's REST API `v1`, pinned to a dated `Stripe-Version`, and the adapter that speaks eQuantic.Payment's unified model: cards, Pix and boleto through PaymentIntents, refunds and customers.
+Stripe for [eQuantic.Payment](https://github.com/eQuantic/core-payment). A typed client for Stripe's REST API `v1`, pinned to a dated `Stripe-Version`, and the adapter that speaks eQuantic.Payment's unified model: cards, Pix, boleto, MB WAY and Multibanco through PaymentIntents, refunds and customers.
 
 ## Install
 
@@ -37,7 +37,7 @@ the default, and every response names the version that answered.
 At Endive, a PaymentIntent or a SetupIntent no longer takes `payment_method_types` (Stripe answers 400,
 `payment_method_types_no_longer_supported`), so the provider names the one type each request is for in
 `allowed_payment_method_types` there, and in `payment_method_types` at the versions before it, which do not
-know the new field. Nothing else in a request changes with the version. The events Stripe sends follow the
+know the new field: `card`, `pix`, `boleto`, `mb_way` or `multibanco`. Nothing else in a request changes with the version. The events Stripe sends follow the
 version of the webhook endpoint, set in Stripe's Dashboard, not this one: move both together.
 
 ## Saved cards, charged with the customer away
@@ -104,6 +104,49 @@ Stripe confirms a payment up to one business day after it is made (`payment_inte
 that expires unpaid fails the PaymentIntent (`payment_intent.payment_failed`), which reads as `Expired`. A
 boleto cannot be refunded or disputed through Stripe.
 
+## MB WAY and Multibanco
+
+Portugal's two methods, for an account that takes them: registered in Europe, or in the US. Stripe refuses
+both for an account in Brazil. Both are in EUR only, from 0.50 EUR to 5,000.00 EUR for MB WAY and to
+99,999.00 EUR for Multibanco; a charge in another currency (`currency_unsupported`, as a `Money` left at
+its BRL default would be) or outside those limits (`amount_out_of_range`) is refused before it reaches
+Stripe. Neither takes manual capture or a charge with the customer away.
+
+```csharp
+var mbWay = await stripe.Charges.CreateAsync(new CreateChargeRequest
+{
+    Amount      = Money.Eur(25.00m),
+    Method      = PaymentMethodType.MbWay,
+    MbWay       = new MbWayDetails { PhoneNumber = "912 345 678" },
+    ReferenceId = "order-42",
+});
+
+var multibanco = await stripe.Charges.CreateAsync(new CreateChargeRequest
+{
+    Amount      = Money.Eur(99.00m),
+    Method      = PaymentMethodType.Multibanco,
+    Customer    = new CustomerRequest { Name = "Joana Silva", Email = "joana@example.com" },
+    ReferenceId = "order-43",
+});
+var voucher = multibanco.Data!.Multibanco!; // Entity, Reference, ExpiresAt, HostedUrl
+```
+
+MB WAY sends the phone as `billing_details[phone]`, in international form (`+351912345678` from
+`912 345 678`, `00351 912 345 678` or `+351 912-345-678`); without a phone number, or with something that is
+not one, the charge is refused with `mb_way_phone_invalid`. Stripe pushes the payment to the customer's MB
+WAY app, and the charge stays `Pending` while they approve it, for up to four minutes: approved, it is
+`Paid`; declined, `Failed`; left unanswered, `Expired`.
+
+Multibanco sends the customer's email as `billing_details[email]`; without one, the charge is refused with
+`multibanco_email_required`. The charge comes back `Pending` with the voucher, which the customer pays at an
+ATM or in online banking within seven days, for the charge's amount. Read again once paid, it keeps the
+entity and reference. A voucher past its expiry reads as `Processing` for up to four days, while Stripe waits
+for a late bank notice, and then as `Expired`. Canceling the charge invalidates its voucher.
+
+Neither settles while the customer is on the page, so the order moves on the events Stripe sends:
+`payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled` and
+`payment_intent.processing`, each carrying the charge (below).
+
 ## Notifications
 
 With the endpoint's signing secret in `WebhookSecret`, the provider verifies what Stripe sends and parses it:
@@ -120,6 +163,7 @@ var response = stripe.Notifications.Verify(new NotificationRequest
 if (response.Success)
 {
     var notification = response.Data!; // Id, Type, CreatedAt, ObjectId, ObjectType, LiveMode
+    var charge = notification.Charge;  // the PaymentIntent, when the event is about one: Status, Method, ReferenceId…
 }
 ```
 
@@ -128,10 +172,15 @@ without a valid `Stripe-Signature`, and a signed body that is not a Stripe event
 its reason. Stripe retries an event for up to
 three days and promises no order, so deduplicate by `Id` and read the object again before acting on it.
 
+An event about a PaymentIntent carries it as the unified charge (`Charge`), as the event rendered it, in the
+version of the webhook endpoint: its status, method, amount, reference id and, for Multibanco, its voucher.
+An event about anything else carries none, and so does a PaymentIntent the model cannot read: the event is
+still verified, to be acknowledged.
+
 ## Good to know
 
-- Requests are form-encoded with a Bearer secret key; every PaymentIntent is read with `latest_charge` expanded, so card, Pix and boleto details come back inline.
-- A PaymentIntent waiting for a payment method after a failed attempt reads as `Failed`, or `Expired` when the attempt expired (an unpaid boleto or Pix); one that has not been attempted reads as `Pending`.
+- Requests are form-encoded with a Bearer secret key; every PaymentIntent is read with `latest_charge` expanded, so card, Pix, boleto and Multibanco details come back inline.
+- A PaymentIntent waiting for a payment method after a failed attempt reads as `Failed`, or `Expired` when the attempt expired (an unpaid boleto, Pix or Multibanco voucher, an unanswered MB WAY push); one that has not been attempted, or waits for the customer (`requires_action`), reads as `Pending`, and one Stripe is still settling (`processing`) as `Processing`.
 - An `IdempotencyKey` on a create, capture, cancel or refund goes as `Idempotency-Key`: for 24 hours, Stripe answers a retry under the same key with the first response, and refuses one whose parameters differ.
 
 Source and the other providers: [https://github.com/eQuantic/core-payment](https://github.com/eQuantic/core-payment).

@@ -6,7 +6,8 @@ using eQuantic.Payment.Stripe.V1.Models;
 namespace eQuantic.Payment.Stripe.V1.Mapping;
 
 /// <summary>
-/// Maps a unified <see cref="CreateChargeRequest"/> to the Stripe <c>POST /v1/payment_intents</c> form body.
+/// Maps a unified <see cref="CreateChargeRequest"/> to the Stripe <c>POST /v1/payment_intents</c> form body: a card,
+/// a saved card, Pix, boleto, MB WAY or Multibanco, each confirmed at once.
 /// Uses <see cref="StripeRequestContext.Today"/> to compute the boleto <c>expires_after_days</c>, and
 /// <see cref="StripeRequestContext.Version"/> to name the payment method types field.
 /// </summary>
@@ -83,6 +84,22 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
                 form.Add("payment_method_data[type]", method);
                 AppendBoleto(form, source, today);
                 break;
+
+            // Neither takes manual capture, so no capture method is sent: Stripe's default, automatic, is the only one.
+            case PaymentMethodType.MbWay:
+                form.Add("payment_method_data[type]", method);
+                if (source.MbWay?.InternationalPhoneNumber is { } phone)
+                {
+                    form.Add("payment_method_data[billing_details][phone]", phone);
+                }
+
+                AppendPayer(form, source.Customer);
+                break;
+
+            case PaymentMethodType.Multibanco:
+                form.Add("payment_method_data[type]", method);
+                AppendPayer(form, source.Customer);
+                break;
         }
 
         // With the customer away, Stripe declines what would ask for authentication rather than wait for it.
@@ -144,6 +161,20 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
         }
     }
 
+    /// <summary>The payer's name and email, when there is one: Multibanco needs the email, and MB WAY takes both.</summary>
+    private static void AppendPayer(StripeForm form, CustomerRequest? payer)
+    {
+        if (!string.IsNullOrWhiteSpace(payer?.Name))
+        {
+            form.Add("payment_method_data[billing_details][name]", payer.Name);
+        }
+
+        if (!string.IsNullOrWhiteSpace(payer?.Email))
+        {
+            form.Add("payment_method_data[billing_details][email]", payer.Email);
+        }
+    }
+
     internal static void AppendAddress(StripeForm form, string prefix, AddressRequest? address, Func<string, string>? text = null)
     {
         if (address is null)
@@ -170,6 +201,8 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
         PaymentMethodType.DebitCard => "card",
         PaymentMethodType.Pix => "pix",
         PaymentMethodType.Boleto => "boleto",
+        PaymentMethodType.MbWay => "mb_way",
+        PaymentMethodType.Multibanco => "multibanco",
         _ => throw new ArgumentOutOfRangeException(nameof(method)),
     };
 }

@@ -34,5 +34,6 @@ the default, and every response names the version that answered.
 
 - Cards and boleto go in `charges[]` and Pix in `qr_codes[]`; a refund is a cancel with an amount.
 - Creates, captures, cancels and refunds carry `x-idempotency-key`: the request's `IdempotencyKey`, or a fresh key when it has none.
+- MB WAY and Multibanco, which PagSeguro does not take here, are refused with `payment_method_type_unsupported` before anything is sent: they go through `eQuantic.Payment.Stripe`.
 
 Source and the other providers: [https://github.com/eQuantic/core-payment](https://github.com/eQuantic/core-payment).

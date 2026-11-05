@@ -28,7 +28,7 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
     }
 
     /// <summary>What Stripe would refuse anyway, refused before the call with a reason the caller can act on.</summary>
-    private static PaymentError? Refuse(CreateChargeRequest request)
+    private PaymentError? Refuse(CreateChargeRequest request)
     {
         if (request.OffSession
             && (string.IsNullOrWhiteSpace(request.CustomerId)
@@ -51,8 +51,20 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
             };
         }
 
+        if (request.Method is PaymentMethodType.MbWay or PaymentMethodType.Multibanco)
+        {
+            return StripePortugal.Refuse(request);
+        }
+
+        if (!UnsupportedPaymentMethodType.IsBrazilian(request.Method))
+        {
+            return UnsupportedMethod(request.Method);
+        }
+
         return null;
     }
+
+    private PaymentError UnsupportedMethod(PaymentMethodType method) => UnsupportedPaymentMethodType.Refuse(info, method).Error!;
 
     /// <summary>A boleto's payer: name, email, CPF or CNPJ and full address, none of them blank.</summary>
     private static bool IsWholePayer(CustomerRequest? payer) =>

@@ -112,6 +112,8 @@ public class StripeEndiveTests
     [InlineData(StripeIntents.SavedCard, "card")]
     [InlineData(StripeIntents.Pix, "pix")]
     [InlineData(StripeIntents.Boleto, "boleto")]
+    [InlineData(StripeIntents.MbWay, "mb_way")]
+    [InlineData(StripeIntents.Multibanco, "multibanco")]
     public async Task At_Endive_a_charge_names_its_type_in_allowed_payment_method_types(string kind, string type)
     {
         var form = await ChargeFormAsync(StripeApiVersion.V2026_09_30_Endive, kind);
@@ -146,12 +148,25 @@ public class StripeEndiveTests
     [InlineData(StripeIntents.SavedCard)]
     [InlineData(StripeIntents.Pix)]
     [InlineData(StripeIntents.Boleto)]
+    [InlineData(StripeIntents.MbWay)]
+    [InlineData(StripeIntents.Multibanco)]
     public async Task At_Endive_a_charge_differs_from_Basil_only_in_the_name_of_that_field(string kind)
     {
         var basil = await ChargeFormAsync(StripeApiVersion.V2025_04_30_Basil, kind);
         var endive = await ChargeFormAsync(StripeApiVersion.V2026_09_30_Endive, kind);
 
         Assert.Equal(basil.Select(field => field.Key == Legacy ? KeyValuePair.Create(Allowed, field.Value) : field), endive);
+    }
+
+    [Theory]
+    [InlineData(StripeIntents.MbWay)]
+    [InlineData(StripeIntents.Multibanco)]
+    public async Task At_2024_06_20_a_charge_differs_from_Basil_in_nothing(string kind)
+    {
+        var basil = await ChargeFormAsync(StripeApiVersion.V2025_04_30_Basil, kind);
+        var june2024 = await ChargeFormAsync(StripeApiVersion.V2024_06_20, kind);
+
+        Assert.Equal(basil, june2024);
     }
 
     [Fact]

@@ -15,6 +15,11 @@ internal sealed class EfiPixOperations(EfiPixClient client, ProviderInfo info, I
 {
     public async Task<PaymentResponse<Charge>> CreateAsync(CreateChargeRequest request, CancellationToken cancellationToken = default)
     {
+        if (!UnsupportedPaymentMethodType.IsBrazilian(request.Method))
+        {
+            return UnsupportedPaymentMethodType.Refuse(info, request.Method);
+        }
+
         if (request.Method != PaymentMethodType.Pix)
         {
             return PaymentResponse<Charge>.Fail(info, new PaymentError

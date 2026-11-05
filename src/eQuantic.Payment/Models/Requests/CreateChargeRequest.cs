@@ -7,6 +7,10 @@ public sealed class CreateChargeRequest
 
     public required PaymentMethodType Method { get; init; }
 
+    /// <summary>
+    /// The payer. A boleto needs them whole on Stripe (name, email, CPF or CNPJ, address); Multibanco needs their email,
+    /// where the gateway can send the voucher.
+    /// </summary>
     public CustomerRequest? Customer { get; init; }
 
     /// <summary>
@@ -30,6 +34,9 @@ public sealed class CreateChargeRequest
 
     /// <summary>Optional boleto settings; defaults apply when omitted.</summary>
     public BoletoDetails? Boleto { get; init; }
+
+    /// <summary>Required when <see cref="Method"/> is <see cref="PaymentMethodType.MbWay"/>: the customer's phone number.</summary>
+    public MbWayDetails? MbWay { get; init; }
 
     public string? Description { get; init; }
 
@@ -102,4 +109,27 @@ public sealed class BoletoDetails
 {
     public DateOnly? DueDate { get; init; }
     public string? Instructions { get; init; }
+}
+
+/// <summary>What an MB WAY payment needs, on any gateway: the phone number the customer's MB WAY account is on.</summary>
+public sealed class MbWayDetails
+{
+    /// <summary>Portugal's country calling code, given to a number typed without one.</summary>
+    private const string PortugueseCallingCode = "351";
+
+    /// <summary>The digits of a Portuguese number without its calling code.</summary>
+    private const int PortugueseNumberLength = 9;
+
+    /// <summary>
+    /// The customer's phone number, as they typed it: <c>912 345 678</c>, <c>00351 912 345 678</c> and
+    /// <c>+351 912-345-678</c> all reach the gateway as <c>+351912345678</c> (<see cref="InternationalPhoneNumber"/>).
+    /// </summary>
+    public required string PhoneNumber { get; init; }
+
+    /// <summary>
+    /// <see cref="PhoneNumber"/> as every gateway gets it, <c>+</c> and 7 to 15 digits (E.164), or null when it is not
+    /// a phone number. Separators are dropped and a leading <c>00</c> is read as <c>+</c>; nine digits without a country
+    /// code are a Portuguese number, where most MB WAY customers are, and a number from elsewhere keeps its own code.
+    /// </summary>
+    public string? InternationalPhoneNumber => PhoneNumbers.International(PhoneNumber, PortugueseCallingCode, PortugueseNumberLength);
 }

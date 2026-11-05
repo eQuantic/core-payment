@@ -31,4 +31,8 @@ the default, and every response names the version that answered.
 |---|---|
 | `CieloApiVersion.V3` (default) | E-commerce API 3.0: PascalCase JSON, centavos, a transactional host for writes and a query host for reads |
 
+## Good to know
+
+- MB WAY and Multibanco, which Cielo does not take here, are refused with `payment_method_type_unsupported` before anything is sent: they go through `eQuantic.Payment.Stripe`.
+
 Source and the other providers: [https://github.com/eQuantic/core-payment](https://github.com/eQuantic/core-payment).

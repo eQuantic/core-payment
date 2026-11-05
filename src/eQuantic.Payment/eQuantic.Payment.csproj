@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Unified payment abstraction for Brazilian payment providers. Single request/response model with provider and API version metadata, adaptable to any gateway (Pagar.me, Stripe, etc).</Description>
-    <PackageTags>payment;gateway;pix;boleto;credit-card;brazil;pagarme;stripe</PackageTags>
+    <Description>Unified payment abstraction for Brazilian payment providers, and for MB WAY and Multibanco in Portugal. Single request/response model with provider and API version metadata, adaptable to any gateway (Pagar.me, Stripe, etc).</Description>
+    <PackageTags>payment;gateway;pix;boleto;credit-card;brazil;mbway;multibanco;portugal;pagarme;stripe</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 

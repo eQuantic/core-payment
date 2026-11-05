@@ -14,6 +14,11 @@ internal sealed class PagSeguroOrdersOperations(PagSeguroOrdersClient client, Pr
 {
     public async Task<PaymentResponse<Charge>> CreateAsync(CreateChargeRequest request, CancellationToken cancellationToken = default)
     {
+        if (!UnsupportedPaymentMethodType.IsBrazilian(request.Method))
+        {
+            return UnsupportedPaymentMethodType.Refuse(info, request.Method);
+        }
+
         var body = mappers.GetMapper<CreateChargeRequest, PagSeguroOrderRequest>().Map(request)!;
         var result = await client.CreateOrderAsync(body, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         if (!result.IsSuccess || result.Data is null)

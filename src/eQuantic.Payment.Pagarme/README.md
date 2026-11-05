@@ -32,4 +32,8 @@ the default, and every response names the version that answered.
 | `PagarmeApiVersion.V5` (default) | Core API v5, orders and charges, Basic auth with the secret key |
 | `PagarmeApiVersion.V4` | the legacy API, transactions, the key in the body |
 
+## Good to know
+
+- MB WAY and Multibanco, which Pagar.me does not take here, are refused with `payment_method_type_unsupported` before anything is sent: they go through `eQuantic.Payment.Stripe`.
+
 Source and the other providers: [https://github.com/eQuantic/core-payment](https://github.com/eQuantic/core-payment).

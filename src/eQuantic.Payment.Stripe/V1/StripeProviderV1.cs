@@ -30,7 +30,7 @@ public sealed class StripeProviderV1 : IPaymentProvider
         Charges = operations;
         Refunds = operations;
         Customers = operations;
-        Notifications = new StripeNotificationOperations(Info, webhookSecret, webhookTolerance, clock);
+        Notifications = new StripeNotificationOperations(Info, webhookSecret, webhookTolerance, clock, mappers);
         PaymentMethods = new StripePaymentMethodOperations(client, Info, version, mappers);
     }
 

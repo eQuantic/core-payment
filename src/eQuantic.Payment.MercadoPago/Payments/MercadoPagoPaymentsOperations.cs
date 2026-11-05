@@ -14,6 +14,11 @@ internal sealed class MercadoPagoPaymentsOperations(MercadoPagoPaymentsClient cl
 {
     public async Task<PaymentResponse<Charge>> CreateAsync(CreateChargeRequest request, CancellationToken cancellationToken = default)
     {
+        if (!UnsupportedPaymentMethodType.IsBrazilian(request.Method))
+        {
+            return UnsupportedPaymentMethodType.Refuse(info, request.Method);
+        }
+
         var body = mappers.GetMapper<CreateChargeRequest, MercadoPagoPaymentRequest>().Map(request)!;
         var result = await client.CreatePaymentAsync(body, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
         return MapCharge(result);

@@ -21,6 +21,8 @@ public class StripeEndiveSchemaTests(StripeMock stripe) : IClassFixture<StripeMo
     [InlineData(StripeIntents.SavedCard)]
     [InlineData(StripeIntents.Pix)]
     [InlineData(StripeIntents.Boleto)]
+    [InlineData(StripeIntents.MbWay)]
+    [InlineData(StripeIntents.Multibanco)]
     public async Task Endives_schema_accepts_the_charge_built_at_Endive(string kind)
     {
         var response = await Provider(StripeApiVersion.V2026_09_30_Endive).Charges.CreateAsync(StripeIntents.Charge(kind, Today));
