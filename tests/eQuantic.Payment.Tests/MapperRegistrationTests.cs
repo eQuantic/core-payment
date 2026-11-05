@@ -38,8 +38,12 @@ public class MapperRegistrationTests
     [Fact]
     public void Stripe_mappers_are_registered()
     {
-        // Response → unified
-        Assert.True(_mappers.TryGetMapper<StripePaymentIntent, Charge>(out _));
+        // Response → unified; the charge a create returns, with its client secret when the browser confirms it, beside
+        // the one every other path maps, which never carries it.
+        Assert.True(_mappers.TryGetMapper<StripePaymentIntent, Charge>(out var charge));
+        Assert.IsType<StripeChargeMapper>(charge);
+        Assert.True(_mappers.TryGetMapper<StripePaymentIntent, Charge, StripeChargeContext>(new StripeChargeContext(), out var created));
+        Assert.IsType<StripeCreatedChargeMapper>(created);
         Assert.True(_mappers.TryGetMapper<StripeCustomer, Customer>(out _));
         Assert.True(_mappers.TryGetMapper<StripeRefund, Refund>(out _));
 

@@ -10,7 +10,7 @@ namespace eQuantic.Payment.Tests.Fakes;
 public static class StripeIntents
 {
     /// <summary>The kinds <see cref="Charge"/> builds, by name, for theories.</summary>
-    public const string Card = "card", SavedCard = "saved card", Pix = "pix", Boleto = "boleto", MbWay = "mb way", Multibanco = "multibanco";
+    public const string Card = "card", SavedCard = "saved card", BrowserCard = "browser card", Pix = "pix", Boleto = "boleto", MbWay = "mb way", Multibanco = "multibanco";
 
     public static CreateChargeRequest Charge(string kind, DateOnly today, string customerId = "cus_123", string paymentMethodId = "pm_card_visa") => kind switch
     {
@@ -20,6 +20,8 @@ public static class StripeIntents
             Method = PaymentMethodType.CreditCard,
             Card = new CardDetails { Token = "tok_visa" },
         },
+        BrowserCard => BrowserCardCharge(),
+
         SavedCard => new CreateChargeRequest
         {
             Amount = Money.Brl(49.90m),
@@ -53,6 +55,18 @@ public static class StripeIntents
             Customer = Portuguese(),
         },
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
+    };
+
+    /// <summary>
+    /// A card charge with no card, the customer present: the customer's browser confirms it with what the Payment
+    /// Element collects.
+    /// </summary>
+    public static CreateChargeRequest BrowserCardCharge(string reference = "order-44", string email = "joana.silva@example.com") => new()
+    {
+        Amount = Money.Eur(49.90m),
+        Method = PaymentMethodType.CreditCard,
+        Customer = Portuguese(email),
+        ReferenceId = reference,
     };
 
     /// <summary>A customer in Portugal: name and e-mail, which is all Multibanco needs.</summary>

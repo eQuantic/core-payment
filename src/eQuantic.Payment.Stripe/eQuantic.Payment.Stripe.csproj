@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Stripe API client for eQuantic.Payment. Versioned client (REST v1, pinned Stripe-Version) plus the unified IPaymentProvider adapter: cards, Pix, boleto, MB WAY and Multibanco.</Description>
-    <PackageTags>payment;stripe;pix;boleto;credit-card;brazil;mbway;multibanco;portugal</PackageTags>
+    <Description>Stripe API client for eQuantic.Payment. Versioned client (REST v1, pinned Stripe-Version) plus the unified IPaymentProvider adapter: cards (confirmed in the browser with the Payment Element, or from a token or a saved card), Pix, boleto, MB WAY and Multibanco.</Description>
+    <PackageTags>payment;stripe;pix;boleto;credit-card;payment-element;apple-pay;google-pay;brazil;mbway;multibanco;portugal</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 

@@ -110,6 +110,7 @@ public class StripeEndiveTests
     [Theory]
     [InlineData(StripeIntents.Card, "card")]
     [InlineData(StripeIntents.SavedCard, "card")]
+    [InlineData(StripeIntents.BrowserCard, "card")]
     [InlineData(StripeIntents.Pix, "pix")]
     [InlineData(StripeIntents.Boleto, "boleto")]
     [InlineData(StripeIntents.MbWay, "mb_way")]
@@ -146,6 +147,7 @@ public class StripeEndiveTests
     [Theory]
     [InlineData(StripeIntents.Card)]
     [InlineData(StripeIntents.SavedCard)]
+    [InlineData(StripeIntents.BrowserCard)]
     [InlineData(StripeIntents.Pix)]
     [InlineData(StripeIntents.Boleto)]
     [InlineData(StripeIntents.MbWay)]
@@ -159,6 +161,7 @@ public class StripeEndiveTests
     }
 
     [Theory]
+    [InlineData(StripeIntents.BrowserCard)]
     [InlineData(StripeIntents.MbWay)]
     [InlineData(StripeIntents.Multibanco)]
     public async Task At_2024_06_20_a_charge_differs_from_Basil_in_nothing(string kind)

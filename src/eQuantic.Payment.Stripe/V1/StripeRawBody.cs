@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -8,10 +9,15 @@ internal static class StripeRawBody
 {
     private const string Redacted = "[redacted]";
 
+    // The body is kept for reading, not for an HTML page: accents, + and the like stay as Stripe wrote them, rather than
+    // the \u escapes the default encoder writes (São Paulo, not S\u00E3o Paulo).
+    private static readonly JsonSerializerOptions AsWritten = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
     /// <summary>
-    /// <paramref name="raw"/> with every <c>client_secret</c> replaced, at any depth (an error carries its SetupIntent):
-    /// a client secret confirms the setup it belongs to, so it reaches the customer's browser only, through the
-    /// result, never an audit trail. A body that names one but cannot be read is not kept at all.
+    /// <paramref name="raw"/> with every <c>client_secret</c> replaced, at any depth (an error carries its PaymentIntent
+    /// or SetupIntent, an event its object): a client secret confirms the payment or the setup it belongs to, so it
+    /// reaches the customer's browser only, through the result, never an audit trail. A body that names one but cannot
+    /// be read is not kept at all.
     /// </summary>
     public static string? WithoutClientSecrets(string? raw)
     {
@@ -24,7 +30,7 @@ internal static class StripeRawBody
         {
             var node = JsonNode.Parse(raw);
             Redact(node);
-            return node?.ToJsonString();
+            return node?.ToJsonString(AsWritten);
         }
         catch (JsonException)
         {

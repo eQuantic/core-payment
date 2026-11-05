@@ -156,7 +156,8 @@ public sealed class StripeNotificationOperations(
                 Charge = charge,
             };
 
-            return PaymentResponse<PaymentNotification>.Ok(info, notification, body);
+            // The event's PaymentIntent holds its client secret, which an audit trail of notifications must not keep.
+            return PaymentResponse<PaymentNotification>.Ok(info, notification, StripeRawBody.WithoutClientSecrets(body));
         }
         catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException or FormatException or ArgumentOutOfRangeException)
         {

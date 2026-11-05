@@ -50,7 +50,7 @@ if (response.Success)
   not do one of these yet answers with a failure.
 - **The unified model**: `CreateChargeRequest`, `CaptureRequest`, `CancelRequest`, `RefundRequest`,
   `CustomerRequest`; `Charge`, `Customer`, `Refund`, with the Pix, boleto, Multibanco and card details each
-  method returns; `Money` in the currency's smallest unit, BRL unless told otherwise (`Money.Brl`,
+  method returns, and the client secret of a card charge the customer's browser confirms (`Charge.ClientSecret`); `Money` in the currency's smallest unit, BRL unless told otherwise (`Money.Brl`,
   `Money.Eur`). The methods are card, debit card, Pix and boleto for Brazil, and MB WAY and Multibanco for
   Portugal, in euros; a provider that does not take a method answers `payment_method_type_unsupported`
   (`UnsupportedPaymentMethodType`) before sending anything.
@@ -79,6 +79,26 @@ var response = await provider.Charges.CreateAsync(new CreateChargeRequest
     MbWay  = new MbWayDetails { PhoneNumber = "912 345 678" },
 });
 ```
+
+## Cards confirmed in the browser
+
+A card charge with no `Card`, the customer present, is one the customer's browser confirms through the
+gateway's own SDK, so no card data reaches your server. On Stripe it comes back `Pending` with
+`Charge.ClientSecret`, which the page hands to Stripe.js and its Payment Element (a card, Apple Pay or Google
+Pay); the outcome arrives as a notification, like any asynchronous payment.
+
+```csharp
+var created = await provider.Charges.CreateAsync(new CreateChargeRequest
+{
+    Amount      = Money.Eur(49.90m),
+    Method      = PaymentMethodType.CreditCard,   // no Card
+    ReferenceId = "order-44",
+});
+var clientSecret = created.Data!.ClientSecret;   // to that customer's page only
+```
+
+The client secret is on that result only: a charge read again or carried by a notification has none, and the
+raw body kept for auditing has it redacted. Hand it to the customer's page, and never store or log it.
 
 ## Retries
 

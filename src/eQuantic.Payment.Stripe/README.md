@@ -1,6 +1,6 @@
 # eQuantic.Payment.Stripe
 
-Stripe for [eQuantic.Payment](https://github.com/eQuantic/core-payment). A typed client for Stripe's REST API `v1`, pinned to a dated `Stripe-Version`, and the adapter that speaks eQuantic.Payment's unified model: cards, Pix, boleto, MB WAY and Multibanco through PaymentIntents, refunds and customers.
+Stripe for [eQuantic.Payment](https://github.com/eQuantic/core-payment). A typed client for Stripe's REST API `v1`, pinned to a dated `Stripe-Version`, and the adapter that speaks eQuantic.Payment's unified model: cards (confirmed in the customer's browser, or charged from a token or a saved card), Pix, boleto, MB WAY and Multibanco through PaymentIntents, refunds and customers.
 
 ## Install
 
@@ -39,6 +39,52 @@ At Endive, a PaymentIntent or a SetupIntent no longer takes `payment_method_type
 `allowed_payment_method_types` there, and in `payment_method_types` at the versions before it, which do not
 know the new field: `card`, `pix`, `boleto`, `mb_way` or `multibanco`. Nothing else in a request changes with the version. The events Stripe sends follow the
 version of the webhook endpoint, set in Stripe's Dashboard, not this one: move both together.
+
+## Cards confirmed in the customer's browser
+
+With Stripe's Payment Element the customer types the card (or pays with Apple Pay or Google Pay, which come
+inside `card`) on a page Stripe.js runs, so no card data reaches you. A card charge with no card, the customer
+present, is created for that page: unconfirmed, for `card`, and back `Pending` with the PaymentIntent's client
+secret.
+
+```csharp
+var created = await stripe.Charges.CreateAsync(new CreateChargeRequest
+{
+    Amount         = Money.Eur(49.90m),
+    Method         = PaymentMethodType.CreditCard,     // no Card: the browser brings one
+    Customer       = new CustomerRequest { Name = "Joana Silva", Email = "joana@example.com" }, // the receipt
+    ReferenceId    = "order-44",
+    IdempotencyKey = "order-44:card",                  // a reload gets the same PaymentIntent back
+});
+var clientSecret = created.Data!.ClientSecret;         // to that customer's page only
+```
+
+```js
+const stripe = Stripe(publishableKey);
+const elements = stripe.elements({ clientSecret });
+elements.create('payment').mount('#payment-element');
+// On submit: 3-D Secure opens in a modal, and a card that needs no redirect does not leave the page.
+const { error } = await stripe.confirmPayment({
+  elements,
+  confirmParams: { return_url: 'https://shop.example/checkout/done' },
+  redirect: 'if_required',
+});
+```
+
+The order moves on the events, not on what the page reports: `payment_intent.succeeded` carries the charge
+`Paid`, and `payment_intent.payment_failed` carries it `Failed`, while the customer can still try another card
+with the same client secret, so a later `payment_intent.succeeded` still pays the order. Before the customer
+confirms, and while they authenticate (`requires_action`), the charge is `Pending`; with `Capture = false` it
+comes back `Authorized` once confirmed, for `CaptureAsync`. More than one `Card.Installments` offers
+installments, and the customer picks the plan in the Payment Element: Stripe takes a plan only when the payment is
+confirmed.
+
+The request carries no `confirm` and no payment method, and the client secret is on the charge `CreateAsync`
+returns for it, nowhere else: a charge read again, captured, canceled or carried by an event has none, and the
+`RawResponse` of every PaymentIntent, and of every notification, has it redacted. Stripe asks that it never be
+stored or logged. A card charge with a token, a saved card or a card number is confirmed on the server, as
+before. In an `<iframe>`, the Payment Element shows Apple Pay and Google Pay only when the frame allows them
+(`allow="payment *"`), and the page that holds the frame serves over HTTPS.
 
 ## Saved cards, charged with the customer away
 
@@ -173,13 +219,15 @@ its reason. Stripe retries an event for up to
 three days and promises no order, so deduplicate by `Id` and read the object again before acting on it.
 
 An event about a PaymentIntent carries it as the unified charge (`Charge`), as the event rendered it, in the
-version of the webhook endpoint: its status, method, amount, reference id and, for Multibanco, its voucher.
+version of the webhook endpoint: its status, method, amount, reference id and, for Multibanco, its voucher. The
+client secret the event's PaymentIntent holds is neither on the charge nor in the `RawResponse`.
 An event about anything else carries none, and so does a PaymentIntent the model cannot read: the event is
 still verified, to be acknowledged.
 
 ## Good to know
 
 - Requests are form-encoded with a Bearer secret key; every PaymentIntent is read with `latest_charge` expanded, so card, Pix, boleto and Multibanco details come back inline.
+- Every `RawResponse` keeps Stripe's body for auditing, with each `client_secret` in it replaced by `[redacted]`.
 - A PaymentIntent waiting for a payment method after a failed attempt reads as `Failed`, or `Expired` when the attempt expired (an unpaid boleto, Pix or Multibanco voucher, an unanswered MB WAY push); one that has not been attempted, or waits for the customer (`requires_action`), reads as `Pending`, and one Stripe is still settling (`processing`) as `Processing`.
 - An `IdempotencyKey` on a create, capture, cancel or refund goes as `Idempotency-Key`: for 24 hours, Stripe answers a retry under the same key with the first response, and refuses one whose parameters differ.
 
