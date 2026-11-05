@@ -12,6 +12,9 @@ public class MbWayDetailsTests
     [InlineData("+351 912-345-678", "+351912345678")]
     [InlineData("+44 7700 900123", "+447700900123")]
     [InlineData("0044 7700 900123", "+447700900123")]
+    [InlineData("+44 (0) 7700 900123", "+447700900123")]
+    [InlineData("0044 (0)7700 900123", "+447700900123")]
+    [InlineData("+351 (912) 345-678", "+351912345678")]
     public void A_phone_number_as_typed_is_written_in_international_form(string typed, string international)
     {
         Assert.Equal(international, new MbWayDetails { PhoneNumber = typed }.InternationalPhoneNumber);
