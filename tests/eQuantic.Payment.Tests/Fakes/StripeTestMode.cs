@@ -78,6 +78,18 @@ public sealed class StripeEurTestModeFactAttribute : FactAttribute
     }
 }
 
+/// <summary>A theory that runs in <see cref="StripeEurTestMode"/>, and is skipped where it has no key.</summary>
+public sealed class StripeEurTestModeTheoryAttribute : TheoryAttribute
+{
+    public StripeEurTestModeTheoryAttribute()
+    {
+        if (!StripeEurTestMode.Available)
+        {
+            Skip = StripeEurTestMode.SkipReason;
+        }
+    }
+}
+
 /// <summary>A fact that runs in Stripe's test mode, and is skipped where <see cref="StripeTestMode"/> has no key.</summary>
 public sealed class StripeTestModeFactAttribute : FactAttribute
 {
