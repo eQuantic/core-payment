@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.0](https://github.com/eQuantic/core-payment/compare/v1.5.0...v1.6.0) (2026-11-05)
+
+### Features
+
+* a card charge through Stripe confirmed in the customer's browser ([4a3db20](https://github.com/eQuantic/core-payment/commit/4a3db2039a9e3452ef5a819c0a44cab259ff4fc0))
+
 ## [1.5.0](https://github.com/eQuantic/core-payment/compare/v1.4.0...v1.5.0) (2026-11-05)
 
 ### Features
