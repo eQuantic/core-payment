@@ -20,5 +20,8 @@ public readonly record struct Money(long AmountInCents, string Currency = Money.
     /// <summary>Creates an amount in Brazilian Reais (BRL).</summary>
     public static Money Brl(decimal amount) => FromDecimal(amount);
 
+    /// <summary>Creates an amount in euros (EUR), the currency of MB WAY and Multibanco.</summary>
+    public static Money Eur(decimal amount) => FromDecimal(amount, "EUR");
+
     public override string ToString() => $"{Currency} {Amount:0.00}";
 }

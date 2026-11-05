@@ -74,11 +74,12 @@ public sealed class StripePaymentIntent
 
 public sealed class StripeNextAction
 {
-    /// <summary>Discriminator, e.g. <c>pix_display_qr_code</c>, <c>boleto_display_details</c>, <c>use_stripe_sdk</c>, <c>redirect_to_url</c>.</summary>
+    /// <summary>Discriminator, e.g. <c>pix_display_qr_code</c>, <c>boleto_display_details</c>, <c>multibanco_display_details</c>, <c>use_stripe_sdk</c>, <c>redirect_to_url</c>.</summary>
     public string? Type { get; set; }
 
     public StripePixDisplayQrCode? PixDisplayQrCode { get; set; }
     public StripeBoletoDisplayDetails? BoletoDisplayDetails { get; set; }
+    public StripeMultibancoDisplayDetails? MultibancoDisplayDetails { get; set; }
     public StripeRedirectToUrl? RedirectToUrl { get; set; }
 }
 
@@ -102,6 +103,22 @@ public sealed class StripeBoletoDisplayDetails
     public string? Pdf { get; set; }
 }
 
+/// <summary>The <c>multibanco_display_details</c> of a <c>next_action</c>: what the customer pays at an ATM or in online banking.</summary>
+public sealed class StripeMultibancoDisplayDetails
+{
+    /// <summary>Entity number associated with this Multibanco payment.</summary>
+    public string? Entity { get; set; }
+
+    /// <summary>The timestamp at which the voucher expires.</summary>
+    public long? ExpiresAt { get; set; }
+
+    /// <summary>The URL of Stripe's hosted page for the voucher.</summary>
+    public string? HostedVoucherUrl { get; set; }
+
+    /// <summary>Reference number associated with this Multibanco payment.</summary>
+    public string? Reference { get; set; }
+}
+
 public sealed class StripeRedirectToUrl
 {
     public string? ReturnUrl { get; set; }
@@ -113,6 +130,8 @@ public sealed class StripePaymentMethodOptions
     public StripeCardOptions? Card { get; set; }
     public StripePixOptions? Pix { get; set; }
     public StripeBoletoOptions? Boleto { get; set; }
+    public StripeSetupFutureUsageOptions? MbWay { get; set; }
+    public StripeSetupFutureUsageOptions? Multibanco { get; set; }
 }
 
 public sealed class StripeCardOptions
@@ -131,6 +150,13 @@ public sealed class StripePixOptions
 public sealed class StripeBoletoOptions
 {
     public int? ExpiresAfterDays { get; set; }
+}
+
+/// <summary>The options of a method whose only one is <c>setup_future_usage</c>, as MB WAY's and Multibanco's.</summary>
+public sealed class StripeSetupFutureUsageOptions
+{
+    /// <summary><c>none</c>: neither method saves the payment method.</summary>
+    public string? SetupFutureUsage { get; set; }
 }
 
 // ── Charge ────────────────────────────────────────────────────────────────────
@@ -207,12 +233,14 @@ public sealed class StripeOutcome
 /// <summary>The <c>payment_method_details</c> object; the populated sub-object matches <see cref="Type"/>.</summary>
 public sealed class StripePaymentMethodDetails
 {
-    /// <summary>Discriminator, e.g. <c>card</c>, <c>pix</c>, <c>boleto</c>.</summary>
+    /// <summary>Discriminator, e.g. <c>card</c>, <c>pix</c>, <c>boleto</c>, <c>mb_way</c>, <c>multibanco</c>.</summary>
     public string? Type { get; set; }
 
     public StripeCardDetails? Card { get; set; }
     public StripePixDetails? Pix { get; set; }
     public StripeBoletoDetails? Boleto { get; set; }
+    public StripeMbWayDetails? MbWay { get; set; }
+    public StripeMultibancoDetails? Multibanco { get; set; }
 }
 
 public sealed class StripeCardDetails
@@ -264,6 +292,21 @@ public sealed class StripeBoletoDetails
 {
     /// <summary>CPF (11 digits) or CNPJ (14 digits).</summary>
     public string? TaxId { get; set; }
+}
+
+/// <summary>The <c>mb_way</c> details of a charge: Stripe documents none.</summary>
+public sealed class StripeMbWayDetails
+{
+}
+
+/// <summary>The <c>multibanco</c> details of a charge: the voucher that was paid.</summary>
+public sealed class StripeMultibancoDetails
+{
+    /// <summary>Entity number associated with this Multibanco payment.</summary>
+    public string? Entity { get; set; }
+
+    /// <summary>Reference number associated with this Multibanco payment.</summary>
+    public string? Reference { get; set; }
 }
 
 // ── Refund ──────────────────────────────────────────────────────────────────

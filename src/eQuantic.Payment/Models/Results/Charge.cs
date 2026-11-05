@@ -24,6 +24,9 @@ public sealed class Charge
     public BoletoOutput? Boleto { get; init; }
     public CardOutput? Card { get; init; }
 
+    /// <summary>The Multibanco voucher, when <see cref="Method"/> is <see cref="PaymentMethodType.Multibanco"/>.</summary>
+    public MultibancoOutput? Multibanco { get; init; }
+
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
 }
 
@@ -60,6 +63,24 @@ public sealed class BoletoOutput
 
     /// <summary>The moment the voucher stops being payable.</summary>
     public DateTimeOffset? ExpiresAt { get; init; }
+}
+
+/// <summary>
+/// A Multibanco voucher: what the customer pays at an ATM or in online banking, the amount being the charge's.
+/// </summary>
+public sealed class MultibancoOutput
+{
+    /// <summary>The entity number (<c>entidade</c>).</summary>
+    public string? Entity { get; init; }
+
+    /// <summary>The reference number (<c>referência</c>).</summary>
+    public string? Reference { get; init; }
+
+    /// <summary>The moment the voucher stops being payable; null once the gateway no longer shows it, as after payment.</summary>
+    public DateTimeOffset? ExpiresAt { get; init; }
+
+    /// <summary>URL of the page the gateway hosts for the voucher; null once the gateway no longer shows it.</summary>
+    public string? HostedUrl { get; init; }
 }
 
 /// <summary>Card payment artifacts.</summary>

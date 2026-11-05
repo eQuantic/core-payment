@@ -22,4 +22,11 @@ public sealed class PaymentNotification
 
     /// <summary>The gateway API version the event's object was rendered in, when the gateway says.</summary>
     public string? ApiVersion { get; init; }
+
+    /// <summary>
+    /// The charge the event is about, as the event rendered it, when its object is one (a Stripe PaymentIntent): its
+    /// status, method, amount and reference id say what happened to which order. Null for an event about anything
+    /// else. Events arrive more than once and out of order, so read the charge again before acting on a stale one.
+    /// </summary>
+    public Charge? Charge { get; init; }
 }

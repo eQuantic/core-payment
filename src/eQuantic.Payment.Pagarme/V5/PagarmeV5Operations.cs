@@ -12,6 +12,11 @@ internal sealed class PagarmeV5ChargeOperations(PagarmeClientV5 client, Provider
 {
     public async Task<PaymentResponse<Charge>> CreateAsync(CreateChargeRequest request, CancellationToken cancellationToken = default)
     {
+        if (!UnsupportedPaymentMethodType.IsBrazilian(request.Method))
+        {
+            return UnsupportedPaymentMethodType.Refuse(info, request.Method);
+        }
+
         var order = mappers.GetMapper<CreateChargeRequest, V5OrderRequest>().Map(request)!;
         var result = await client.CreateOrderAsync(order, cancellationToken).ConfigureAwait(false);
         return MapOrder(result);

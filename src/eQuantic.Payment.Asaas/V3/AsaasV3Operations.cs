@@ -19,6 +19,11 @@ internal sealed class AsaasV3Operations(AsaasV3Client client, ProviderInfo info,
 {
     public async Task<PaymentResponse<Charge>> CreateAsync(CreateChargeRequest request, CancellationToken cancellationToken = default)
     {
+        if (!UnsupportedPaymentMethodType.IsBrazilian(request.Method))
+        {
+            return UnsupportedPaymentMethodType.Refuse(info, request.Method);
+        }
+
         var body = mappers.GetMapper<CreateChargeRequest, AsaasPaymentRequest>().Map(request)!;
 
         // Asaas /payments requires a customer id. The unified request carries customer DATA, so create the

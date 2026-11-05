@@ -48,6 +48,7 @@ public sealed class StripeChargeMapper : IMapper<StripePaymentIntent, Charge>
                     ExpiresAt = boleto.ExpiresAt is { } expiresAt ? DateTimeOffset.FromUnixTimeSeconds(expiresAt) : null,
                 }
                 : null,
+            Multibanco = method == PaymentMethodType.Multibanco ? Multibanco(source) : null,
             Card = method is PaymentMethodType.CreditCard or PaymentMethodType.DebitCard
                 ? new CardOutput
                 {
@@ -62,11 +63,35 @@ public sealed class StripeChargeMapper : IMapper<StripePaymentIntent, Charge>
 
     public Charge? Map(StripePaymentIntent? source, Charge? destination) => Map(source);
 
+    /// <summary>
+    /// The voucher, from <c>next_action</c> while it is payable, else from the latest charge, which keeps the entity and
+    /// reference once paid.
+    /// </summary>
+    private static MultibancoOutput? Multibanco(StripePaymentIntent source)
+    {
+        if (source.NextAction?.MultibancoDisplayDetails is { } voucher)
+        {
+            return new MultibancoOutput
+            {
+                Entity = voucher.Entity,
+                Reference = voucher.Reference,
+                ExpiresAt = voucher.ExpiresAt is { } expiresAt ? DateTimeOffset.FromUnixTimeSeconds(expiresAt) : null,
+                HostedUrl = voucher.HostedVoucherUrl,
+            };
+        }
+
+        return source.LatestCharge?.PaymentMethodDetails?.Multibanco is { } paid
+            ? new MultibancoOutput { Entity = paid.Entity, Reference = paid.Reference }
+            : null;
+    }
+
     private static PaymentMethodType FromPaymentMethodType(string? type) => type?.ToLowerInvariant() switch
     {
         "card" => PaymentMethodType.CreditCard,
         "pix" => PaymentMethodType.Pix,
         "boleto" => PaymentMethodType.Boleto,
+        "mb_way" => PaymentMethodType.MbWay,
+        "multibanco" => PaymentMethodType.Multibanco,
         _ => PaymentMethodType.CreditCard,
     };
 }

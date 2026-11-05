@@ -2,10 +2,13 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using eQuantic.Mapper;
 using eQuantic.Payment.Abstractions;
 using eQuantic.Payment.Models;
 using eQuantic.Payment.Models.Requests;
 using eQuantic.Payment.Models.Results;
+using eQuantic.Payment.Stripe.V1;
+using eQuantic.Payment.Stripe.V1.Models;
 
 namespace eQuantic.Payment.Stripe;
 
@@ -13,15 +16,23 @@ namespace eQuantic.Payment.Stripe;
 /// Verifies Stripe's signature on an event, then parses it. <c>Stripe-Signature</c> carries a timestamp
 /// (<c>t</c>) and an HMAC-SHA256 (<c>v1</c>) of <c>{t}.{raw body}</c> under the endpoint's signing secret,
 /// several of them while a secret is being rolled; any one is enough. A timestamp further from now than the
-/// tolerance is refused, so a captured event cannot be replayed later.
+/// tolerance is refused, so a captured event cannot be replayed later. An event about a PaymentIntent carries it as
+/// the unified <see cref="Charge"/>, mapped by <paramref name="mappers"/>' charge mapper.
 /// </summary>
 public sealed class StripeNotificationOperations(
     ProviderInfo info,
     string? webhookSecret,
     TimeSpan tolerance,
-    TimeProvider clock) : INotificationOperations
+    TimeProvider clock,
+    IMapperFactory? mappers) : INotificationOperations
 {
     public const string SignatureHeader = "Stripe-Signature";
+
+    /// <summary>Operations whose notifications carry no charge, as before they could map one.</summary>
+    public StripeNotificationOperations(ProviderInfo info, string? webhookSecret, TimeSpan tolerance, TimeProvider clock)
+        : this(info, webhookSecret, tolerance, clock, mappers: null)
+    {
+    }
 
     // The last second DateTimeOffset can represent: a larger timestamp is not one.
     private const long MaxUnixSeconds = 253_402_300_799;
@@ -121,12 +132,14 @@ public sealed class StripeNotificationOperations(
 
             string? objectId = null;
             string? objectType = null;
+            Charge? charge = null;
             if (root.TryGetProperty("data", out var data)
                 && data.TryGetProperty("object", out var @object)
                 && @object.ValueKind == JsonValueKind.Object)
             {
                 objectId = @object.TryGetProperty("id", out var id) ? id.GetString() : null;
                 objectType = @object.TryGetProperty("object", out var type) ? type.GetString() : null;
+                charge = objectType == "payment_intent" ? ChargeOf(@object) : null;
             }
 
             var notification = new PaymentNotification
@@ -140,6 +153,7 @@ public sealed class StripeNotificationOperations(
                 ApiVersion = root.TryGetProperty("api_version", out var apiVersion) && apiVersion.ValueKind == JsonValueKind.String
                     ? apiVersion.GetString()
                     : null,
+                Charge = charge,
             };
 
             return PaymentResponse<PaymentNotification>.Ok(info, notification, body);
@@ -147,6 +161,29 @@ public sealed class StripeNotificationOperations(
         catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException or FormatException or ArgumentOutOfRangeException)
         {
             return Fail("payload_invalid", $"The notification is signed but is not a Stripe event: {exception.Message}");
+        }
+    }
+
+    /// <summary>
+    /// The event's PaymentIntent as a charge, or null when it cannot be read as one: the event is still Stripe's, and
+    /// the consumer still has to acknowledge it, so a PaymentIntent the model does not fit leaves the charge out
+    /// rather than failing the notification.
+    /// </summary>
+    private Charge? ChargeOf(JsonElement paymentIntent)
+    {
+        if (mappers is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var intent = paymentIntent.Deserialize<StripePaymentIntent>(StripeJson.Options);
+            return intent is null ? null : mappers.GetMapper<StripePaymentIntent, Charge>().Map(intent);
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 
