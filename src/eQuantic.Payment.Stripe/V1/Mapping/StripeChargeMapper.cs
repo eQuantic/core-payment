@@ -5,10 +5,19 @@ using eQuantic.Payment.Stripe.V1.Models;
 
 namespace eQuantic.Payment.Stripe.V1.Mapping;
 
-/// <summary>Maps a Stripe PaymentIntent to the unified <see cref="Charge"/>.</summary>
+/// <summary>
+/// Maps a Stripe PaymentIntent to the unified <see cref="Charge"/>, without its client secret: a charge read again,
+/// captured, canceled, declined or carried by a notification never needs it. The one a create returns for the browser
+/// to confirm is mapped by <see cref="StripeCreatedChargeMapper"/>.
+/// </summary>
 public sealed class StripeChargeMapper : IMapper<StripePaymentIntent, Charge>
 {
-    public Charge? Map(StripePaymentIntent? source)
+    public Charge? Map(StripePaymentIntent? source) => Map(source, clientSecret: null);
+
+    public Charge? Map(StripePaymentIntent? source, Charge? destination) => Map(source);
+
+    /// <summary>The charge <paramref name="source"/> is, carrying <paramref name="clientSecret"/> when one is given.</summary>
+    internal static Charge? Map(StripePaymentIntent? source, string? clientSecret)
     {
         if (source is null)
         {
@@ -58,10 +67,9 @@ public sealed class StripeChargeMapper : IMapper<StripePaymentIntent, Charge>
                     Installments = card?.Installments?.Plan?.Count is { } n and > 0 ? n : 1,
                 }
                 : null,
+            ClientSecret = clientSecret,
         };
     }
-
-    public Charge? Map(StripePaymentIntent? source, Charge? destination) => Map(source);
 
     /// <summary>
     /// The voucher, from <c>next_action</c> while it is payable, else from the latest charge, which keeps the entity and

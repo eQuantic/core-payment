@@ -27,6 +27,14 @@ public sealed class Charge
     /// <summary>The Multibanco voucher, when <see cref="Method"/> is <see cref="PaymentMethodType.Multibanco"/>.</summary>
     public MultibancoOutput? Multibanco { get; init; }
 
+    /// <summary>
+    /// What the customer's browser confirms the charge with, through the gateway's own SDK (Stripe.js
+    /// <c>confirmPayment</c>, with the Payment Element): set only on the charge a create returns for a card charge
+    /// the browser confirms, and null on every other charge, one read again or carried by a notification included.
+    /// Hand it to that customer's browser only, and never store or log it.
+    /// </summary>
+    public string? ClientSecret { get; init; }
+
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
 }
 

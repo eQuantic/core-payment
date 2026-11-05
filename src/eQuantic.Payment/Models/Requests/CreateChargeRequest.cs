@@ -26,7 +26,11 @@ public sealed class CreateChargeRequest
     /// </summary>
     public bool OffSession { get; init; }
 
-    /// <summary>Required when <see cref="Method"/> is credit/debit card.</summary>
+    /// <summary>
+    /// The card to charge, when <see cref="Method"/> is credit/debit card. On Stripe it may be left out, with the
+    /// customer present: the charge is then created for the customer's browser to confirm, and comes back pending
+    /// with its <see cref="Results.Charge.ClientSecret"/>.
+    /// </summary>
     public CardDetails? Card { get; init; }
 
     /// <summary>Optional PIX settings; defaults apply when omitted.</summary>

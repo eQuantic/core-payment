@@ -24,7 +24,10 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
         var context = new StripeRequestContext { Version = version, Today = StripeBoleto.Today(request.AttemptedAt ?? clock.GetUtcNow()) };
         var form = mappers.GetMapper<CreateChargeRequest, StripeForm, StripeRequestContext>(context).Map(request)!;
         var result = await client.CreatePaymentIntentAsync(form, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
-        return MapCharge(result);
+
+        // Only the charge the browser confirms carries the client secret, and only on this result.
+        var created = new StripeChargeContext { ConfirmsInBrowser = StripePaymentIntentFormMapper.ConfirmsInBrowser(request) };
+        return MapCharge(result, mappers.GetMapper<StripePaymentIntent, Charge, StripeChargeContext>(created));
     }
 
     /// <summary>What Stripe would refuse anyway, refused before the call with a reason the caller can act on.</summary>
@@ -149,19 +152,28 @@ internal sealed class StripeV1Operations(StripeClientV1 client, ProviderInfo inf
         return MapCustomer(result);
     }
 
-    private PaymentResponse<Charge> MapCharge(ApiResult<StripePaymentIntent> result)
+    private PaymentResponse<Charge> MapCharge(ApiResult<StripePaymentIntent> result) =>
+        MapCharge(result, mappers.GetMapper<StripePaymentIntent, Charge>());
+
+    /// <summary>
+    /// The charge <paramref name="result"/> answered with, mapped by <paramref name="mapper"/>, and its raw body without
+    /// the client secret Stripe returns on every PaymentIntent.
+    /// </summary>
+    private PaymentResponse<Charge> MapCharge(ApiResult<StripePaymentIntent> result, IMapper<StripePaymentIntent, Charge> mapper)
     {
+        var raw = StripeRawBody.WithoutClientSecrets(result.RawBody);
         if (!result.IsSuccess || result.Data is null)
         {
             // A declined card, or one that asks for authentication with the customer away, is a 402 whose error
-            // still carries the PaymentIntent: the failure comes back with the charge, its id and its status.
+            // still carries the PaymentIntent: the failure comes back with the charge, its id and its status, but
+            // not its client secret. A charge the browser confirms is created unconfirmed, so no create declines it.
             var error = StripeErrorMapper.Parse(result);
             var declined = error?.PaymentIntent is { } intent ? mappers.GetMapper<StripePaymentIntent, Charge>().Map(intent) : null;
-            return PaymentResponse<Charge>.Fail(info, StripeErrorMapper.ToError(error, result.StatusCode), declined, result.RawBody);
+            return PaymentResponse<Charge>.Fail(info, StripeErrorMapper.ToError(error, result.StatusCode), declined, raw);
         }
 
-        var charge = mappers.GetMapper<StripePaymentIntent, Charge>().Map(result.Data)!;
-        return PaymentResponse<Charge>.Ok(info, charge, result.RawBody);
+        var charge = mapper.Map(result.Data)!;
+        return PaymentResponse<Charge>.Ok(info, charge, raw);
     }
 
     private PaymentResponse<Customer> MapCustomer(ApiResult<StripeCustomer> result)

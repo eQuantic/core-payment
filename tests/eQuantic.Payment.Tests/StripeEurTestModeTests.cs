@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
@@ -14,9 +15,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace eQuantic.Payment.Tests;
 
 /// <summary>
-/// MB WAY and Multibanco in Stripe's test mode, in an account that takes them (<see cref="StripeEurTestMode"/>), at
-/// Basil, the default, and at Endive. The phone numbers are Stripe's test values: one ending in 6 is declined by the
-/// customer, one ending in 5 expires unanswered, and any other is approved at once.
+/// MB WAY, Multibanco and a card the browser confirms, in Stripe's test mode, in an account that takes them
+/// (<see cref="StripeEurTestMode"/>), at Basil, the default, and at Endive. The phone numbers are Stripe's test
+/// values: one ending in 6 is declined by the customer, one ending in 5 expires unanswered, and any other is approved
+/// at once. The card is confirmed as Stripe.js would confirm it, with Stripe's test payment methods.
 /// </summary>
 public class StripeEurTestModeTests
 {
@@ -176,6 +178,97 @@ public class StripeEurTestModeTests
         Assert.False(string.IsNullOrEmpty(voucher.Reference));
         Assert.True(voucher.ExpiresAt > DateTimeOffset.UtcNow);
         Assert.StartsWith("https://", voucher.HostedUrl);
+    }
+
+    /// <summary>
+    /// Confirms <paramref name="paymentIntentId"/> with <paramref name="paymentMethod"/>, one of Stripe's test payment
+    /// methods, as Stripe.js does with what the Payment Element collected, and answers with the HTTP status Stripe gave.
+    /// </summary>
+    private static async Task<HttpStatusCode> ConfirmAsBrowserAsync(StripeApiVersion version, string paymentIntentId, string paymentMethod)
+    {
+        using var http = new HttpClient { BaseAddress = new Uri(StripeDefaults.BaseUrl) };
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", StripeEurTestMode.SecretKey);
+        http.DefaultRequestHeaders.Add("Stripe-Version", StripeDefaults.StripeVersionHeader(version));
+        using var response = await http.PostAsync(
+            $"payment_intents/{paymentIntentId}/confirm",
+            new FormUrlEncodedContent([KeyValuePair.Create("payment_method", paymentMethod), KeyValuePair.Create("return_url", "https://example.com/checkout/return")]));
+        return response.StatusCode;
+    }
+
+    [StripeEurTestModeTheory]
+    [InlineData(StripeApiVersion.V2025_04_30_Basil)]
+    [InlineData(StripeApiVersion.V2026_09_30_Endive)]
+    public async Task A_card_the_browser_confirms_is_created_with_its_client_secret_and_is_paid_once_confirmed(StripeApiVersion version)
+    {
+        var stripe = Stripe(version);
+        var reference = $"order-{Guid.NewGuid():N}";
+
+        var created = await stripe.Charges.CreateAsync(StripeIntents.BrowserCardCharge(reference));
+
+        Assert.True(created.Success, created.Error?.Message);
+        Assert.Equal(PaymentStatus.Pending, created.Data!.Status);
+        Assert.Equal("requires_payment_method", created.Data.ProviderStatus);
+        Assert.Equal(PaymentMethodType.CreditCard, created.Data.Method);
+        Assert.StartsWith($"{created.Data.Id}_secret_", created.Data.ClientSecret);
+        Assert.DoesNotContain(created.Data.ClientSecret!, created.RawResponse);
+
+        Assert.Equal(HttpStatusCode.OK, await ConfirmAsBrowserAsync(version, created.Data.Id, "pm_card_visa"));
+
+        var read = await stripe.Charges.GetAsync(created.Data.Id);
+        Assert.True(read.Success, read.Error?.Message);
+        Assert.Equal(PaymentStatus.Paid, read.Data!.Status);
+        Assert.Equal("visa", read.Data.Card!.Brand);
+        Assert.Null(read.Data.ClientSecret);
+        Assert.DoesNotContain(created.Data.ClientSecret!, read.RawResponse);
+
+        var notification = stripe.Notifications.Verify(Signed(await EventAsync("payment_intent.succeeded", created.Data.Id)));
+
+        Assert.True(notification.Success, notification.Error?.Message);
+        var charge = notification.Data!.Charge!;
+        Assert.Equal(PaymentStatus.Paid, charge.Status);
+        Assert.Equal(PaymentMethodType.CreditCard, charge.Method);
+        Assert.Equal(reference, charge.ReferenceId);
+        Assert.Null(charge.ClientSecret);
+        Assert.DoesNotContain(created.Data.ClientSecret!, notification.RawResponse);
+    }
+
+    [StripeEurTestModeTheory]
+    [InlineData(StripeApiVersion.V2025_04_30_Basil)]
+    [InlineData(StripeApiVersion.V2026_09_30_Endive)]
+    public async Task A_card_the_browser_confirms_stays_pending_while_the_customer_authenticates_with_3D_Secure(StripeApiVersion version)
+    {
+        var stripe = Stripe(version);
+
+        var created = await stripe.Charges.CreateAsync(StripeIntents.BrowserCardCharge($"order-{Guid.NewGuid():N}"));
+        Assert.True(created.Success, created.Error?.Message);
+
+        Assert.Equal(HttpStatusCode.OK, await ConfirmAsBrowserAsync(version, created.Data!.Id, "pm_card_threeDSecure2Required"));
+
+        var read = await stripe.Charges.GetAsync(created.Data.Id);
+        Assert.True(read.Success, read.Error?.Message);
+        Assert.Equal("requires_action", read.Data!.ProviderStatus);
+        Assert.Equal(PaymentStatus.Pending, read.Data.Status);
+    }
+
+    [StripeEurTestModeFact]
+    public async Task A_card_the_browser_confirms_that_is_declined_fails_and_its_event_says_so()
+    {
+        var stripe = Stripe(StripeApiVersion.V2025_04_30_Basil);
+
+        var created = await stripe.Charges.CreateAsync(StripeIntents.BrowserCardCharge($"order-{Guid.NewGuid():N}"));
+        Assert.True(created.Success, created.Error?.Message);
+
+        Assert.Equal(HttpStatusCode.PaymentRequired, await ConfirmAsBrowserAsync(StripeApiVersion.V2025_04_30_Basil, created.Data!.Id, "pm_card_chargeDeclined"));
+
+        var read = await stripe.Charges.GetAsync(created.Data.Id);
+        Assert.True(read.Success, read.Error?.Message);
+        Assert.Equal(PaymentStatus.Failed, read.Data!.Status);
+
+        var notification = stripe.Notifications.Verify(Signed(await EventAsync("payment_intent.payment_failed", created.Data.Id)));
+
+        Assert.True(notification.Success, notification.Error?.Message);
+        Assert.Equal(PaymentStatus.Failed, notification.Data!.Charge!.Status);
+        Assert.Null(notification.Data.Charge.ClientSecret);
     }
 
     [StripeEurTestModeFact]

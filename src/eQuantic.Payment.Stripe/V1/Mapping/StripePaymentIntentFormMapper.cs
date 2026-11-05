@@ -7,7 +7,8 @@ namespace eQuantic.Payment.Stripe.V1.Mapping;
 
 /// <summary>
 /// Maps a unified <see cref="CreateChargeRequest"/> to the Stripe <c>POST /v1/payment_intents</c> form body: a card,
-/// a saved card, Pix, boleto, MB WAY or Multibanco, each confirmed at once.
+/// a saved card, Pix, boleto, MB WAY or Multibanco, each confirmed at once, or a card with no card to charge, left
+/// for the customer's browser to confirm (<see cref="ConfirmsInBrowser"/>).
 /// Uses <see cref="StripeRequestContext.Today"/> to compute the boleto <c>expires_after_days</c>, and
 /// <see cref="StripeRequestContext.Version"/> to name the payment method types field.
 /// </summary>
@@ -26,12 +27,18 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
         }
 
         var today = Context?.Today ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var inBrowser = ConfirmsInBrowser(source);
         var form = new StripeForm
         {
             { "amount", source.Amount.AmountInCents.ToString() },
             { "currency", source.Amount.Currency.ToLowerInvariant() },
-            { "confirm", "true" },
         };
+
+        // The browser confirms what it collects (Stripe.js confirmPayment); everything else is confirmed here, at once.
+        if (!inBrowser)
+        {
+            form.Add("confirm", "true");
+        }
 
         var method = ToPaymentMethodType(source.Method);
         form.Add(StripeDefaults.PaymentMethodTypesField(Context?.Version ?? StripeDefaults.Version), method);
@@ -51,27 +58,14 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
             case PaymentMethodType.CreditCard:
             case PaymentMethodType.DebitCard:
                 form.Add("capture_method", source.Capture ? "automatic" : "manual");
-                if (SavedPaymentMethod(source.Card) is { } paymentMethodId)
+
+                // In the browser no payment method is sent: the Payment Element collects one (a card, Apple Pay, Google Pay).
+                if (!inBrowser)
                 {
-                    form.Add("payment_method", paymentMethodId);
-                }
-                else
-                {
-                    form.Add("payment_method_data[type]", method);
-                    if (source.Card?.Token is { } token)
-                    {
-                        form.Add("payment_method_data[card][token]", token);
-                    }
+                    AppendCard(form, source.Card, method);
                 }
 
-                var installments = source.Card?.Installments ?? 1;
-                if (installments > 1)
-                {
-                    form.Add("payment_method_options[card][installments][enabled]", "true");
-                    form.Add("payment_method_options[card][installments][plan][count]", installments.ToString());
-                    form.Add("payment_method_options[card][installments][plan][interval]", "month");
-                    form.Add("payment_method_options[card][installments][plan][type]", "fixed_count");
-                }
+                AppendInstallments(form, source.Card, inBrowser);
                 break;
 
             case PaymentMethodType.Pix:
@@ -137,6 +131,56 @@ public sealed class StripePaymentIntentFormMapper : IMapper<CreateChargeRequest,
     /// </summary>
     internal static string? SavedPaymentMethod(CardDetails? card) =>
         card?.PaymentMethodId ?? (card?.Token is { } token && token.StartsWith("pm_", StringComparison.Ordinal) ? token : null);
+
+    /// <summary>
+    /// Whether the customer's browser confirms the charge: a card charge with the customer present and no card to
+    /// charge, neither a token, a saved payment method nor a card number. Stripe creates its PaymentIntent unconfirmed,
+    /// and Stripe.js confirms it with what the Payment Element collects. A card number with no token is not one: the
+    /// caller meant that card, and Stripe refuses it as before.
+    /// </summary>
+    internal static bool ConfirmsInBrowser(CreateChargeRequest request) =>
+        request.Method is PaymentMethodType.CreditCard or PaymentMethodType.DebitCard
+        && !request.OffSession
+        && string.IsNullOrWhiteSpace(request.Card?.Token)
+        && string.IsNullOrWhiteSpace(request.Card?.PaymentMethodId)
+        && string.IsNullOrWhiteSpace(request.Card?.Number);
+
+    /// <summary>The card a charge confirmed here is for: a saved payment method, or the card behind a token.</summary>
+    private static void AppendCard(StripeForm form, CardDetails? card, string method)
+    {
+        if (SavedPaymentMethod(card) is { } paymentMethodId)
+        {
+            form.Add("payment_method", paymentMethodId);
+            return;
+        }
+
+        form.Add("payment_method_data[type]", method);
+        if (card?.Token is { } token)
+        {
+            form.Add("payment_method_data[card][token]", token);
+        }
+    }
+
+    /// <summary>
+    /// More than one installment: offered, and with the plan when the charge is confirmed here. Stripe takes a plan only
+    /// when the payment is confirmed, so in the browser the customer picks it in the Payment Element.
+    /// </summary>
+    private static void AppendInstallments(StripeForm form, CardDetails? card, bool inBrowser)
+    {
+        var installments = card?.Installments ?? 1;
+        if (installments <= 1)
+        {
+            return;
+        }
+
+        form.Add("payment_method_options[card][installments][enabled]", "true");
+        if (!inBrowser)
+        {
+            form.Add("payment_method_options[card][installments][plan][count]", installments.ToString());
+            form.Add("payment_method_options[card][installments][plan][interval]", "month");
+            form.Add("payment_method_options[card][installments][plan][type]", "fixed_count");
+        }
+    }
 
     private static void AppendBoleto(StripeForm form, CreateChargeRequest request, DateOnly today)
     {

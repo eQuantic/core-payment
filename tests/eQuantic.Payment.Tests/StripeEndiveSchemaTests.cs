@@ -19,6 +19,7 @@ public class StripeEndiveSchemaTests(StripeMock stripe) : IClassFixture<StripeMo
 
     [Theory]
     [InlineData(StripeIntents.SavedCard)]
+    [InlineData(StripeIntents.BrowserCard)]
     [InlineData(StripeIntents.Pix)]
     [InlineData(StripeIntents.Boleto)]
     [InlineData(StripeIntents.MbWay)]

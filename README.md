@@ -138,7 +138,7 @@ Rules this layer follows (validated against the official docs):
 - **Never** model partially "from memory". Example: Stripe removed the `charges` array in API version `2022-11-15` — the correct field is `latest_charge` (an expandable id), which requires `expand[]=latest_charge`. Modeling `charges[]` would leave card data always null.
 - Serialization uses `SnakeCaseLower`; only digit-suffixed keys (`line_1`/`line_2`) need an explicit `[JsonPropertyName]`.
 - Status enums map with an `Unknown` catch-all — a new gateway value never breaks deserialization.
-- The raw body is always preserved in `PaymentResponse.RawResponse` for auditing.
+- The raw body is always preserved in `PaymentResponse.RawResponse` for auditing, less what acts on the gateway: Stripe's client secrets read `[redacted]` there.
 
 > **Stripe boleto** requires `billing_details` with a full address — that is why `CustomerRequest.Address` is required in that case. Stripe boleto expiry is in days (`expires_after_days`, 0–60), not a timestamp.
 >
@@ -261,6 +261,19 @@ var voucher = (await provider.Charges.CreateAsync(new CreateChargeRequest
 ```
 
 Both settle later: a verified notification about the payment carries the charge (`PaymentNotification.Charge`), with its status, method and reference id.
+
+On Stripe, a card charge can also be confirmed in the customer's browser, with Stripe.js and the Payment Element (a card, Apple Pay or Google Pay), so no card data reaches the server. Leave `Card` out, with the customer present, and the charge comes back `Pending` with the PaymentIntent's client secret for that page:
+
+```csharp
+var clientSecret = (await provider.Charges.CreateAsync(new CreateChargeRequest
+{
+    Amount      = Money.Eur(49.90m),
+    Method      = PaymentMethodType.CreditCard,   // no Card: the Payment Element collects it
+    ReferenceId = "order-44",
+})).Data!.ClientSecret;  // to stripe.elements({ clientSecret }) and stripe.confirmPayment(...), never to a log
+```
+
+The outcome arrives as `payment_intent.succeeded` or `payment_intent.payment_failed`, each carrying the charge. The client secret is on that result only: no charge read again or carried by an event has it, and every Stripe `RawResponse` has it redacted.
 
 ### Available operations (`IPaymentProvider`)
 
